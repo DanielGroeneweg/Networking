@@ -65,7 +65,7 @@ public class UIManager : MonoBehaviour
             default: gameOverText.text = "it's a draw"; break;
         }
     }
-    void PlayerChange(int player, BettingActions chosenAction, int pot)
+    void PlayerChange(int player, int chosenAction, int pot)
     {
         Debug.Log("Active player: " + player);
         switch (player)
@@ -89,7 +89,7 @@ public class UIManager : MonoBehaviour
             all.Add(callButton);
             HashSet<Button> allowed = new();
 
-            switch(chosenAction)
+            switch((BettingActions)chosenAction)
             {
                 case BettingActions.Check:
                     allowed.Add(checkButton);
@@ -138,10 +138,13 @@ public class UIManager : MonoBehaviour
     {
         moneyDisplayers[player - 1].text = $"Player {player}: {money}";
     }
-    void PresentCards(Player playerData)
+    void PresentCards(int card1Rank, int card1Suit, int card2Rank, int card2Suit)
     {
-        card1.PresentCard(playerData.cards[0]);
-        card2.PresentCard(playerData.cards[1]);
+        Card firstCard = new Card((Suits)card1Suit, (Ranks)card1Rank);
+        Card secondCard = new Card((Suits)card2Suit, (Ranks)card2Rank);
+
+        card1.PresentCard(firstCard);
+        card2.PresentCard(secondCard);
     }
     void EndRound(int winner)
     {

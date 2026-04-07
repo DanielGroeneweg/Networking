@@ -95,7 +95,7 @@ public class Server : MonoBehaviour
 		board = new TexasHoldemBoard(500);
 		// Subscribe to game model events:
 		// (Note: we try to keep the game code independent from networking details.)
-		board.OnActivePlayerChange += ActivePlayerChangeRpc;
+		//board.OnActivePlayerChange += ActivePlayerChangeRpc;
 		board.OnGameOver += GameOverRpc;
 		// (Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
 

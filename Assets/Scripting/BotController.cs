@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 public class BotController : MonoBehaviour
 {
@@ -59,7 +60,23 @@ public class BotController : MonoBehaviour
             money = Random.Range(1, moneyLeft);
         }
 
-        MoveData moveData = new MoveData(action, money, 2);
-        board.MakeMove(moveData);
+        switch(action)
+        {
+            case BettingActions.Bet:
+                board.Bet(2, money);
+                break;
+            case BettingActions.Raise:
+                board.Raise(2, money);
+                break;
+            case BettingActions.Call:
+                board.Call(2);
+                break;
+            case BettingActions.Check:
+                board.Check(2);
+                break;
+            case BettingActions.Fold:
+                board.Fold(2);
+                break;
+        }
     }
 }

@@ -24,7 +24,7 @@ public class BoardManager : MonoBehaviour
             board.OnStartRound -= ClearBoard;
         }
     }
-    public void DisplayBoard(int pot, GamePhases gamePhase, Card[] cardsOnBoard)
+    public void DisplayBoard(int pot, int gamePhase, Card[] cardsOnBoard)
     {
         ClearBoard();
 
@@ -36,7 +36,7 @@ public class BoardManager : MonoBehaviour
             cards.Add(obj);
         }
     }
-    public void ClearBoard(Player playerData = null)
+    public void ClearBoard(int card1Rank = 0, int card1Suit = 0, int card2Rank = 0, int card2Suit = 0)
     {
         foreach (CardPresenter card in cards) if (card != null) Destroy(card.gameObject);
         cards.Clear();

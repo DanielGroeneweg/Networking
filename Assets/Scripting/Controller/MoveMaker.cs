@@ -20,24 +20,19 @@ public class MoveMaker : MonoBehaviour
     }
     public void Check()
     {
-        MoveData moveData = new MoveData(BettingActions.Check, 0, 1);
-        board.MakeMove(moveData);
+        board.Check(1);
     }
     public void Bet() {
-        MoveData moveData = new MoveData(BettingActions.Bet, betValue, 1);
-        board.MakeMove(moveData);
+        board.Bet(1, betValue);
     }
     public void Call() {
-        MoveData moveData = new MoveData(BettingActions.Call, 0, 1);
-        board.MakeMove(moveData);
+        board.Call(1);
     }
     public void Raise()
     {
-        MoveData moveData = new MoveData(BettingActions.Raise, betValue, 1);
-        board.MakeMove(moveData);
+        board.Raise(1, betValue);
     }
     public void Fold() {
-        MoveData moveData = new MoveData(BettingActions.Fold, 0, 1);
-        board.MakeMove(moveData);
+        board.Fold(1);
     }
 }

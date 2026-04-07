@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using System.Diagnostics;
 public class TexasHoldemBoard
 {
-    public delegate void StartRoundEvent(Player playerData);
+    #region variables
+    public delegate void StartRoundEvent(int card1Rank, int card1Suit, int card2Rank, int card2Suit);
     public event StartRoundEvent OnStartRound;
 
     public delegate void EndRoundEvent(int winner);
     public event EndRoundEvent OnEndRound;
 
-    public delegate void ActivePlayerChangeEvent(int activePlayer, BettingActions chosenAction, int pot);
+    public delegate void ActivePlayerChangeEvent(int activePlayer, int chosenAction, int pot);
     public event ActivePlayerChangeEvent OnActivePlayerChange;
 
     public delegate void BotMoveEvent(BettingActions chosenAction, int botMoney, int pot);
     public event BotMoveEvent OnBotMove;
 
-    public delegate void PhaseChangeEvent(int pot, GamePhases gamePhase, Card[] cardsOnBoard);
+    public delegate void PhaseChangeEvent(int pot, int gamePhase, Card[] cardsOnBoard);
     public event PhaseChangeEvent OnPhaseChange;
 
     public delegate void GameOverEvent(int winner);
@@ -68,19 +69,126 @@ public class TexasHoldemBoard
             if (cards[0] != null && cards[1] != null) { players[i] = new Player(startingMoney, cards); }
         }
     }
-    public void MakeMove(MoveData moveData)
+    #endregion
+
+    #region Actions
+    public void Bet(int player, int money)
     {
-        if (!gameRunning)
+        if (!ValidAction(player)) return;
+
+        if (money <= 0) return;
+
+        if (players[_activePlayer - 1].money < money)
         {
-            Logger.LogInfo($"There is no game being played player {moveData.player}!");
+            Logger.LogInfo($"Player {player} tried betting {money} but only has {players[player - 1].money} money");
+            if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
             return;
         }
 
-        // Prevent players from making moves out of turn
-        if (moveData.player != _activePlayer)
+        pot += money;
+        players[_activePlayer - 1].Bet(money);
+
+        betToBeMatched = players[_activePlayer - 1].betMoney;
+
+        lastPickedAction = BettingActions.Bet;
+
+        Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
+
+        FinishTurn();
+    }
+    public void Check(int player)
+    {
+        if (!ValidAction(player)) return;
+
+        lastPickedAction = BettingActions.Check;
+
+        Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
+
+        FinishTurn();
+    }
+    public void Fold(int player)
+    {
+        if (!ValidAction(player)) return;
+
+        Logger.LogInfo($"Player {_activePlayer} took action: {BettingActions.Fold}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
+
+        players[_activePlayer - 1].isInHand = false;
+        // Check if only one player remains
+        int playersStillIn = 0;
+        int lastPlayerIndex = -1;
+
+        for (int i = 0; i < players.Length; i++)
         {
-            Logger.LogInfo($"It is not your turn player {moveData.player}. active player: {_activePlayer}");
+            if (players[i].isInHand)
+            {
+                playersStillIn++;
+                lastPlayerIndex = i;
+            }
+        }
+
+        if (playersStillIn == 1)
+        {
+            EndRound(lastPlayerIndex + 1);
             return;
+        }
+
+        FinishTurn();
+    }
+    public void Raise(int player, int money)
+    {
+        if (!ValidAction(player)) return;
+
+        if (money <= 0)
+        {
+            Logger.LogInfo($"Player {_activePlayer} put in a bet that is too small");
+            return;
+        }
+
+        int moneyIncrease = betToBeMatched - players[_activePlayer - 1].betMoney + money;
+
+        if (players[_activePlayer - 1].money < moneyIncrease)
+        {
+            Logger.LogInfo($"Player {_activePlayer} doesn't have enough money to bet {moneyIncrease}. has: {players[_activePlayer - 1].money}");
+            if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
+            return;
+        }
+
+        players[_activePlayer - 1].Bet(moneyIncrease);
+        betToBeMatched = players[_activePlayer - 1].betMoney;
+        pot += moneyIncrease;
+        lastPickedAction = BettingActions.Raise;
+
+        Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
+
+        FinishTurn();
+    }
+    public void Call(int player)
+    {
+        if (!ValidAction(player)) return;
+
+        int moneyForPot = (int)MathF.Min(players[_activePlayer - 1].money, betToBeMatched - players[_activePlayer - 1].betMoney);
+        pot += moneyForPot;
+        players[_activePlayer - 1].Bet(moneyForPot);
+        lastPickedAction = BettingActions.Call;
+
+        Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
+
+        FinishTurn();
+    }
+    bool ValidAction(int player)
+    {
+        // Prevent actions taken when there is no game being played
+        if (!gameRunning)
+        {
+            Logger.LogInfo($"There is no game being played player {player}!");
+            return false;
+        }
+
+        // Prevent players from making moves out of turn
+        if (player != _activePlayer)
+        {
+            Logger.LogInfo($"It is not your turn player {player}. active player: {_activePlayer}");
+            return false;
         }
 
         // Skip player who already folded
@@ -89,110 +197,39 @@ public class TexasHoldemBoard
             Logger.LogInfo($"Player {_activePlayer} is out! Skipping turn!");
             players[_activePlayer - 1].tookAction = true;
 
-            MoveData _moveData = new MoveData(lastPickedAction, 0, _activePlayer);
-
-            NextTurn(_moveData);
-            return;
+            NextTurn(lastPickedAction);
+            return false;
         }
 
-        switch(moveData.actionTaken)
-        {
-            case BettingActions.Check:
-                break;
+        return true;
+    }
+    #endregion
 
-            case BettingActions.Bet:
-                if (moveData.moneyBet <= 0) return;
-
-                if (players[_activePlayer - 1].money < moveData.moneyBet)
-                {
-                    Logger.LogInfo($"Player {moveData.player} tried betting {moveData.moneyBet} but only has {players[moveData.player - 1].money} money");
-                    if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
-                    return;
-                }
-
-                pot += moveData.moneyBet;
-                players[_activePlayer - 1].Bet(moveData.moneyBet);
-
-                betToBeMatched = players[_activePlayer - 1].betMoney;
-                break;
-
-            case BettingActions.Call:
-                int moneyForPot = (int)MathF.Min(players[_activePlayer - 1].money, betToBeMatched - players[_activePlayer - 1].betMoney);
-                pot += moneyForPot;
-                players[_activePlayer - 1].Bet(moneyForPot);
-                break;
-
-            case BettingActions.Raise:
-                if (moveData.moneyBet <= 0)
-                {
-                    Logger.LogInfo($"Player {_activePlayer} put in a bet that is too small");
-                    return;
-                }
-
-                int moneyIncrease = betToBeMatched - players[_activePlayer - 1].betMoney + moveData.moneyBet;
-
-                if (players[_activePlayer - 1].money < moneyIncrease)
-                {
-                    Logger.LogInfo($"Player {_activePlayer} doesn't have enough money to bet {moneyIncrease}. has: {players[_activePlayer - 1].money}");
-                    if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
-                    return;
-                }
-
-                players[_activePlayer - 1].Bet(moneyIncrease);
-                betToBeMatched = players[_activePlayer - 1].betMoney;
-                pot += moneyIncrease;
-                break;
-
-            case BettingActions.Fold:
-                players[_activePlayer - 1].isInHand = false;
-                // Check if only one player remains
-                int playersStillIn = 0;
-                int lastPlayerIndex = -1;
-                moveData.actionTaken = lastPickedAction;
-
-                for (int i = 0; i < players.Length; i++)
-                {
-                    if (players[i].isInHand)
-                    {
-                        playersStillIn++;
-                        lastPlayerIndex = i;
-                    }
-                }
-
-                if (playersStillIn == 1)
-                {
-                    EndRound(lastPlayerIndex + 1);
-                    return;
-                }
-                break;
-        }
-
+    #region GameLogic
+    void FinishTurn()
+    {
         OnPlayerMoneyChange.Invoke(_activePlayer, players[_activePlayer - 1].money);
 
-        Logger.LogInfo($"Player {_activePlayer} took action: {moveData.actionTaken}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
-
         players[_activePlayer - 1].tookAction = true;
-
-        lastPickedAction = moveData.actionTaken;
 
         if (IsBettingRoundComplete())
         {
             Logger.LogInfo($"Phase {currentPhase} completed, advancing to phase {(GamePhases)(currentPhase + 1)}");
             AdvancePhase();
         }
-        
-        else 
-            NextTurn(moveData);
+
+        else
+            NextTurn(lastPickedAction);
     }
-    void NextTurn(MoveData moveData)
+    void NextTurn(BettingActions actionTaken)
     {
         // Don't assume two players!
         Logger.LogInfo($"Moving from Player {_activePlayer} to Player {3 - _activePlayer}");
         _activePlayer = 3 - _activePlayer;
 
-        OnActivePlayerChange?.Invoke(_activePlayer, moveData.actionTaken, pot);
+        OnActivePlayerChange?.Invoke(_activePlayer, (int)actionTaken, pot);
 
-        if (_activePlayer == 2) { OnBotMove.Invoke(moveData.actionTaken, pot, players[1].money); }
+        if (_activePlayer == 2) { OnBotMove.Invoke(actionTaken, pot, players[1].money); }
     }
     bool IsBettingRoundComplete()
     {
@@ -237,14 +274,14 @@ public class TexasHoldemBoard
                 break;
         }
 
-        OnPhaseChange?.Invoke(pot, currentPhase, cardsOnBoard);
+        OnPhaseChange?.Invoke(pot, (int)currentPhase, cardsOnBoard);
 
         if (currentPhase == GamePhases.Showdown)
         {
             DetermineWinner();
         }
 
-        else NextTurn(new MoveData(BettingActions.None, 0, _activePlayer));
+        else NextTurn(BettingActions.None);
     }
     void EndRound(int winner)
     {
@@ -271,7 +308,6 @@ public class TexasHoldemBoard
             OnEndRound.Invoke(winner);
 
             deckOfCards = new DeckOfCards(true);
-            //StartRound();
         }
     }
     void DetermineWinner()
@@ -304,7 +340,14 @@ public class TexasHoldemBoard
             Logger.LogInfo($"Player {i + 1} has been dealt cards: {cards[0].ToString()}, {cards[1].ToString()}");
         }
 
-        NextTurn(new MoveData(BettingActions.None, 0, 2));
-        OnStartRound.Invoke(players[0]);
+        NextTurn(BettingActions.None);
+
+        OnStartRound.Invoke(
+            (int)players[0].cards[0].rank,
+            (int)players[0].cards[0].suit,
+            (int)players[0].cards[1].rank,
+            (int)players[0].cards[1].suit
+            );
     }
+    #endregion
 }
