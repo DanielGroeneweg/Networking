@@ -97,8 +97,9 @@ public class Server : MonoBehaviour
 		// (Note: we try to keep the game code independent from networking details.)
 		
 		//board.OnActivePlayerChange += ActivePlayerChangeRpc;
-		board.OnGameOver += GameOverRpc;
-		// (Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
+		//board.OnGameOver += GameOverRpc;
+		
+        //(Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
 
 		// Subscribe listeners for incoming messages:
 		// The (optional) list of parameter types (OSCUtil.INT) lets the dispatcher filter
@@ -255,19 +256,96 @@ public class Server : MonoBehaviour
 		connection.Send(message.GetBytes()); // private message
 	}
 	// These three RPCs are called by game model events (TicTacToeBoard):
-	public void CellChangeRpc(int row, int col, int value) {
-		OSCMessageOut message = new OSCMessageOut("/CellChange").AddInt(row).AddInt(col).AddInt(value);
-		Broadcast(message.GetBytes());
-	}
-	public void ActivePlayerChangeRpc(int player, BettingActions actionTaken, int pot) {
-		OSCMessageOut message = new OSCMessageOut("/ActivePlayer").AddInt(player);
-		Broadcast(message.GetBytes());
-	}
-	public void GameOverRpc(int winner) {
-		OSCMessageOut message = new OSCMessageOut("/GameOver").AddInt(winner);
-		Broadcast(message.GetBytes());
-	}
-	void Broadcast(byte[] packet) {
+    void UpdatePotRpc(int pot)
+    {
+        OSCMessageOut message = new OSCMessageOut("/UpdatePot").AddInt(pot);
+        Broadcast(message.GetBytes());
+    }
+    void UpdatePlayerMoneyRpc(int player, int playerMoney)
+    {
+        OSCMessageOut message = new OSCMessageOut("/UpdatePlayerMoney").AddInt(player).AddInt(playerMoney);
+        Broadcast(message.GetBytes());
+    }
+    void NextPlayerRpc(int activePlayer, int actionTaken)
+    {
+        OSCMessageOut message = new OSCMessageOut("/NextPlayer").AddInt(activePlayer).AddInt(actionTaken);
+        Broadcast(message.GetBytes());
+    }
+    void ChangePlayerRpc(int actionTaken, int player)
+    {
+        OSCMessageOut message = new OSCMessageOut("/ChangePlayer").AddInt(actionTaken);
+
+        foreach(TcpNetworkConnection connection in playerIDs.Keys)
+        {
+            if (playerIDs[connection] == player)
+            {
+                connection.Send(message.GetBytes());
+                break;
+            }
+        }
+    }
+    void NextPhaseRpc(int phase)
+    {
+        OSCMessageOut message = new OSCMessageOut("/NextPhase").AddInt(phase);
+        Broadcast(message.GetBytes());
+    }
+    void NewRoundRpc()
+    {
+        OSCMessageOut message = new OSCMessageOut("/NewRound");
+        Broadcast(message.GetBytes());
+    }
+    void DealPlayerCardsRpc(Card card1, Card card2, int player)
+    {
+        foreach (TcpNetworkConnection connection in playerIDs.Keys)
+        {
+            if (playerIDs[connection] == player)
+            {
+                OSCMessageOut message = new OSCMessageOut("/DealPlayerCards").AddInt((int)card1.rank).AddInt((int)card1.suit).AddInt((int)card2.rank).AddInt((int)card2.suit);
+                connection.Send(message.GetBytes());
+                break;
+            }
+        }
+    }
+    void DealTableCardsRpc(Card[] cards)
+    {
+        OSCMessageOut message = new OSCMessageOut("/DealTableCards");
+        for(int i = 0; i < 5; i++)
+        {
+            Card card = cards[i];
+
+            if (card == null)
+                message.AddInt(-1).AddInt(-1);
+
+            else
+                message.AddInt((int)card.rank).AddInt((int)card.suit);
+        }
+        Broadcast(message.GetBytes());
+    }
+    void InvalidActionRpc(string error, int player)
+    {
+        OSCMessageOut message = new OSCMessageOut("/InvalidAction").AddString(error);
+        foreach (TcpNetworkConnection connection in playerIDs.Keys)
+        {
+            if (playerIDs[connection] == player)
+            {
+                connection.Send(message.GetBytes());
+                break;
+            }
+        }
+    }
+    void InvalidNewRoundRpc(string error, int player)
+    {
+        OSCMessageOut message = new OSCMessageOut("/InvalidNewRound").AddString(error);
+        foreach (TcpNetworkConnection connection in playerIDs.Keys)
+        {
+            if (playerIDs[connection] == player)
+            {
+                connection.Send(message.GetBytes());
+                break;
+            }
+        }
+    }
+    void Broadcast(byte[] packet) {
 		foreach (var conn in connections) {
 			conn.Send(packet);
 		}

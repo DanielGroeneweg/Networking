@@ -3,26 +3,39 @@ using System.Collections.Generic;
 public class TexasHoldemBoard
 {
     #region variables
-    public delegate void StartRoundEvent(int card1Rank, int card1Suit, int card2Rank, int card2Suit);
-    public event StartRoundEvent OnStartRound;
 
-    public delegate void EndRoundEvent(int winner);
-    public event EndRoundEvent OnEndRound;
+    public delegate void UpdatePotEvent(int potMoney);
+    event UpdatePotEvent OnUpdatePot;
 
-    public delegate void ActivePlayerChangeEvent(int activePlayer, int chosenAction, int pot);
-    public event ActivePlayerChangeEvent OnActivePlayerChange;
+    public delegate void UpdatePlayerMoneyEvent(int player, int playerMoney);
+    event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
 
-    public delegate void PhaseChangeEvent(int pot, int gamePhase, Card[] cardsOnBoard);
-    public event PhaseChangeEvent OnPhaseChange;
+    public delegate void NextPlayerEvent(int activePlayer, int actionTaken);
+    event NextPlayerEvent OnNextPlayer;
 
-    public delegate void GameOverEvent(int winner);
-    public event GameOverEvent OnGameOver;
+    public delegate void ChangePlayerEvent(int actionTaken, int player);
+    event ChangePlayerEvent OnChangePlayerOptions;
 
-    public delegate void PlayerMoneyChangeEvent(int player, int money);
-    public event PlayerMoneyChangeEvent OnPlayerMoneyChange;
+    public delegate void NextPhaseEvent(int phase);
+    event NextPhaseEvent OnNextPhase;
 
-    public delegate void PotMoneyChangeEvent(int money);
-    public event PotMoneyChangeEvent OnPotMoneyChange;
+    public delegate void NewRoundEvent();
+    event NewRoundEvent OnNewRound;
+
+    public delegate void DealCardsEvent(Card card1, Card card2, int player);
+    event DealCardsEvent OnDealPlayerCards;
+
+    public delegate void DealTableCardsEvent(Card[] cards);
+    event DealTableCardsEvent OnDealTableCards;
+
+    public delegate void InvalidActionEvent(string error, int player);
+    event InvalidActionEvent OnInvalidAction;
+
+    public delegate void InvalidNewRoundEvent(string error, int player);
+    event InvalidNewRoundEvent OnInvalidNewRound;
+
+    public delegate void PlayerInfoEvent(int playerID);
+    event PlayerInfoEvent OnPlayerInfoReceived;
 
     // The amount of players
     int _playerAmount;
@@ -64,11 +77,14 @@ public class TexasHoldemBoard
 
         if (players[_activePlayer - 1].money < money)
         {
-            Logger.LogInfo($"Player {player} tried betting {money} but only has {players[player - 1].money} money");
+            Logger.LogInfo($"Player {player} tried betting ${money} but only has ${players[player - 1].money}");
+            OnInvalidAction?.Invoke($"Tried betting ${money} but only has ${players[player - 1].money}", player);
             return;
         }
 
         pot += money;
+        OnUpdatePot?.Invoke(pot);
+        OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
         players[_activePlayer - 1].Bet(money);
 
         betToBeMatched = players[_activePlayer - 1].betMoney;
@@ -124,6 +140,7 @@ public class TexasHoldemBoard
         if (money <= 0)
         {
             Logger.LogInfo($"Player {_activePlayer} put in a bet that is too small");
+            OnInvalidAction?.Invoke($"Put in a bet that is too small", player);
             return;
         }
 
@@ -132,12 +149,15 @@ public class TexasHoldemBoard
         if (players[_activePlayer - 1].money < moneyIncrease)
         {
             Logger.LogInfo($"Player {_activePlayer} doesn't have enough money to bet {moneyIncrease}. has: {players[_activePlayer - 1].money}");
+            OnInvalidAction?.Invoke($"You don't have enough money to bet {moneyIncrease}. Money: {players[_activePlayer - 1].money}", player);
             return;
         }
 
         players[_activePlayer - 1].Bet(moneyIncrease);
         betToBeMatched = players[_activePlayer - 1].betMoney;
         pot += moneyIncrease;
+        OnUpdatePot?.Invoke(pot);
+        OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
         lastPickedAction = BettingActions.Raise;
 
         Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
@@ -150,7 +170,9 @@ public class TexasHoldemBoard
 
         int moneyForPot = (int)MathF.Min(players[_activePlayer - 1].money, betToBeMatched - players[_activePlayer - 1].betMoney);
         pot += moneyForPot;
+        OnUpdatePot?.Invoke(pot);
         players[_activePlayer - 1].Bet(moneyForPot);
+        OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
         lastPickedAction = BettingActions.Call;
 
         Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
@@ -163,6 +185,7 @@ public class TexasHoldemBoard
         if (!gameRunning)
         {
             Logger.LogInfo($"There is no game being played player {player}!");
+            OnInvalidAction?.Invoke($"There is no game being played player {player}!", player);
             return false;
         }
 
@@ -170,6 +193,7 @@ public class TexasHoldemBoard
         if (player != _activePlayer)
         {
             Logger.LogInfo($"It is not your turn player {player}. active player: {_activePlayer}");
+            OnInvalidAction?.Invoke($"It is not your turn player {player}. active player: {_activePlayer}", player);
             return false;
         }
 
@@ -190,8 +214,6 @@ public class TexasHoldemBoard
     #region GameLogic
     void FinishTurn()
     {
-        OnPlayerMoneyChange.Invoke(_activePlayer, players[_activePlayer - 1].money);
-
         players[_activePlayer - 1].tookAction = true;
 
         if (IsBettingRoundComplete())
@@ -209,7 +231,8 @@ public class TexasHoldemBoard
         Logger.LogInfo($"Moving from Player {_activePlayer} to Player {3 - _activePlayer}");
         _activePlayer = 3 - _activePlayer;
 
-        OnActivePlayerChange?.Invoke(_activePlayer, (int)actionTaken, pot);
+        OnNextPlayer?.Invoke(_activePlayer, (int)actionTaken);
+        OnChangePlayerOptions?.Invoke((int)actionTaken, _activePlayer);
     }
     bool IsBettingRoundComplete()
     {
@@ -243,18 +266,21 @@ public class TexasHoldemBoard
                 cardsOnBoard[1] = deckOfCards.DrawCard();
                 cardsOnBoard[2] = deckOfCards.DrawCard();
                 Logger.LogInfo($"New cards: {cardsOnBoard[0].ToString()}, {cardsOnBoard[1].ToString()}, {cardsOnBoard[2].ToString()}");
+                OnDealTableCards?.Invoke(cardsOnBoard);
                 break;
             case GamePhases.Turn:
                 cardsOnBoard[3] = deckOfCards.DrawCard();
                 Logger.LogInfo($"New cards: {cardsOnBoard[3].ToString()}");
+                OnDealTableCards?.Invoke(cardsOnBoard);
                 break;
             case GamePhases.River:
                 cardsOnBoard[4] = deckOfCards.DrawCard();
                 Logger.LogInfo($"New cards: {cardsOnBoard[4].ToString()}");
+                OnDealTableCards?.Invoke(cardsOnBoard);
                 break;
         }
 
-        OnPhaseChange?.Invoke(pot, (int)currentPhase, cardsOnBoard);
+        OnNextPhase?.Invoke((int)currentPhase);
 
         if (currentPhase == GamePhases.Showdown)
         {
@@ -281,22 +307,24 @@ public class TexasHoldemBoard
             }
         }
         
+        // TODO remove 2 player assumption
         else 
             players[winner - 1].AddMoney(pot);
 
-        OnPlayerMoneyChange.Invoke(1, players[0].money);
-        OnPlayerMoneyChange.Invoke(2, players[1].money);
+        OnUpdatePlayerMoney.Invoke(1, players[0].money);
+        OnUpdatePlayerMoney.Invoke(2, players[1].money);
 
-        if (players[0].money <= 0 || players[1].money <= 0) OnGameOver.Invoke(winner);
+        /*if (players[0].money <= 0 || players[1].money <= 0) OnGameOver.Invoke(winner);
         
         else
         {
             gameRunning = false;
 
-            OnEndRound.Invoke(winner);
+            //OnEndRound.Invoke(winner);
 
             deckOfCards = new DeckOfCards(true);
         }
+        */
     }
     void DetermineWinner()
     {
@@ -336,16 +364,13 @@ public class TexasHoldemBoard
             if (cards[0] != null && cards[1] != null) { players[i] = new Player(players[i].money, cards); }
 
             Logger.LogInfo($"Player {i + 1} has been dealt cards: {cards[0].ToString()}, {cards[1].ToString()}");
+
+            OnDealPlayerCards?.Invoke(cards[0], cards[1], i + 1);
         }
 
         NextTurn(BettingActions.None);
 
-        OnStartRound.Invoke(
-            (int)players[0].cards[0].rank,
-            (int)players[0].cards[0].suit,
-            (int)players[0].cards[1].rank,
-            (int)players[0].cards[1].suit
-            );
+        OnNewRound.Invoke();
     }
     #endregion
 }

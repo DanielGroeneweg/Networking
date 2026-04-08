@@ -50,9 +50,6 @@ public class Client : MonoBehaviour
 	public delegate void InvalidNewRoundEvent(string error);
 	public event InvalidNewRoundEvent OnInvalidNewRound;
 
-	public delegate void PlayerInfoEvent(int playerID);
-	public event PlayerInfoEvent OnPlayerInfoReceived;
-
     void Start()
     {
 		TcpClient client = new TcpClient();
@@ -99,7 +96,6 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/DealTableCards", DealTableCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/InvalidAction", InvalidActionRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/InvalidNewRound", InvalidNewRoundRpc, OSCUtil.STRING);
-        dispatcher.AddListener("/PlayerInfo", PlayerInfoRpc, OSCUtil.INT);
     }
 
 	// ----- Incoming RPCs (events are triggered, and View classes subscribe):
@@ -171,10 +167,6 @@ public class Client : MonoBehaviour
         string error = message.ReadString();
         OnInvalidNewRound?.Invoke(error);
     }
-    void PlayerInfoRpc(OSCMessageIn message, IPEndPoint remote) {
-		int playerIndex = message.ReadInt();
-		OnPlayerInfoReceived?.Invoke(playerIndex);
-	}
 
 	// ----- Outgoing RPCs (called from Controller):
 	public void CheckRequest()
