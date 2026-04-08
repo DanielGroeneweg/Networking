@@ -5,26 +5,25 @@ public class BoardManager : MonoBehaviour
     [SerializeField] CardPresenter cardPresenterPrefab;
 
     List<CardPresenter> cards = new();
-    TexasHoldemBoard board;
+    Client client;
     void Start()
     {
-        ModelOwner owner = FindFirstObjectByType<ModelOwner>();
-        if (owner != null)
+        client = FindFirstObjectByType<Client>();
+        if (client != null)
         {
-            board = owner.board;
-            board.OnPhaseChange += DisplayBoard;
-            board.OnStartRound += ClearBoard;
+            client.OnDealTableCards += DisplayBoard;
+            client.OnNewRound += ClearBoard;
         }
     }
     void OnDestroy()
     {
-        if (board != null)
+        if (client != null)
         {
-            board.OnPhaseChange -= DisplayBoard;
-            board.OnStartRound -= ClearBoard;
+            client.OnDealTableCards -= DisplayBoard;
+            client.OnNewRound -= ClearBoard;
         }
     }
-    public void DisplayBoard(int pot, int gamePhase, Card[] cardsOnBoard)
+    public void DisplayBoard(Card[] cardsOnBoard)
     {
         ClearBoard();
 
@@ -36,7 +35,7 @@ public class BoardManager : MonoBehaviour
             cards.Add(obj);
         }
     }
-    public void ClearBoard(int card1Rank = 0, int card1Suit = 0, int card2Rank = 0, int card2Suit = 0)
+    public void ClearBoard()
     {
         foreach (CardPresenter card in cards) if (card != null) Destroy(card.gameObject);
         cards.Clear();

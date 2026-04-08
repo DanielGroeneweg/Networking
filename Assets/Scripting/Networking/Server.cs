@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
-using static UnityEngine.Rendering.DebugUI.Table;
 
 /// <summary>
 /// The Server is the class that manages network connections with all clients, and 

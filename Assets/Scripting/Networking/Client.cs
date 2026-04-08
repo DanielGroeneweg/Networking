@@ -3,7 +3,9 @@ using System.Net;
 using System.Net.Sockets;
 using NetworkConnections;
 using OSCTools;
-
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using System;
 /// <summary>
 /// The client is the class that lets game code (Controller and View classes) communicate with 
 /// the server, and handles network connections.
@@ -39,7 +41,7 @@ public class Client : MonoBehaviour
 	public delegate void DealCardsEvent(int cardRank1, int cardSuit1, int cardRank2, int cardSuit2);
 	public event DealCardsEvent OnDealCards;
 
-	public delegate void DealTableCardsEvent(int cardRank1, int cardSuit1, int cardRank2, int cardSuit2, int cardRank3, int cardSuit3, int cardRank4, int cardSuit4, int cardRank5, int cardSuit5);
+	public delegate void DealTableCardsEvent(Card[] cards);
 	public event DealTableCardsEvent OnDealTableCards;
 
 	public delegate void InvalidActionEvent(string error);
@@ -144,18 +146,20 @@ public class Client : MonoBehaviour
 	}
 	void DealTableCardsRpc(OSCMessageIn message, IPEndPoint remote)
 	{
-        int cardRank1 = message.ReadInt();
-        int cardSuit1 = message.ReadInt();
-        int cardRank2 = message.ReadInt();
-        int cardSuit2 = message.ReadInt();
-        int cardRank3 = message.ReadInt();
-        int cardSuit3 = message.ReadInt();
-        int cardRank4 = message.ReadInt();
-        int cardSuit4 = message.ReadInt();
-        int cardRank5 = message.ReadInt();
-        int cardSuit5 = message.ReadInt();
+		List<int> cardInts = new();
 
-        OnDealTableCards?.Invoke(cardRank1, cardSuit1, cardRank2, cardSuit2, cardRank3, cardSuit3, cardRank4, cardSuit4, cardRank5, cardSuit5);
+        for (int i = 0; i < 10; i++) cardInts.Add(message.ReadInt());
+
+		Card[] cards = new Card[5];
+
+		for(int i = 0; i < 5; i++)
+		{
+			if (cardInts[i] == -1) continue;
+
+			cards[i] = (new Card((Suits)cardInts[(i *2 ) + 1], (Ranks)cardInts[(i * 2)]));
+		}
+
+        OnDealTableCards?.Invoke(cards);
     }
 	void InvalidActionRpc(OSCMessageIn message, IPEndPoint remote)
 	{

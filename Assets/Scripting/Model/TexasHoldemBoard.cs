@@ -12,9 +12,6 @@ public class TexasHoldemBoard
     public delegate void ActivePlayerChangeEvent(int activePlayer, int chosenAction, int pot);
     public event ActivePlayerChangeEvent OnActivePlayerChange;
 
-    public delegate void BotMoveEvent(BettingActions chosenAction, int botMoney, int pot);
-    public event BotMoveEvent OnBotMove;
-
     public delegate void PhaseChangeEvent(int pot, int gamePhase, Card[] cardsOnBoard);
     public event PhaseChangeEvent OnPhaseChange;
 
@@ -68,7 +65,6 @@ public class TexasHoldemBoard
         if (players[_activePlayer - 1].money < money)
         {
             Logger.LogInfo($"Player {player} tried betting {money} but only has {players[player - 1].money} money");
-            if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
             return;
         }
 
@@ -136,7 +132,6 @@ public class TexasHoldemBoard
         if (players[_activePlayer - 1].money < moneyIncrease)
         {
             Logger.LogInfo($"Player {_activePlayer} doesn't have enough money to bet {moneyIncrease}. has: {players[_activePlayer - 1].money}");
-            if (_activePlayer == 2) { OnBotMove.Invoke(lastPickedAction, pot, players[1].money); }
             return;
         }
 
@@ -215,8 +210,6 @@ public class TexasHoldemBoard
         _activePlayer = 3 - _activePlayer;
 
         OnActivePlayerChange?.Invoke(_activePlayer, (int)actionTaken, pot);
-
-        if (_activePlayer == 2) { OnBotMove.Invoke(actionTaken, pot, players[1].money); }
     }
     bool IsBettingRoundComplete()
     {
