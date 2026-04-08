@@ -5,37 +5,37 @@ public class TexasHoldemBoard
     #region variables
 
     public delegate void UpdatePotEvent(int potMoney);
-    event UpdatePotEvent OnUpdatePot;
+    public event UpdatePotEvent OnUpdatePot;
 
     public delegate void UpdatePlayerMoneyEvent(int player, int playerMoney);
-    event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
+    public event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
 
     public delegate void NextPlayerEvent(int activePlayer, int actionTaken);
-    event NextPlayerEvent OnNextPlayer;
+    public event NextPlayerEvent OnNextPlayer;
 
     public delegate void ChangePlayerEvent(int actionTaken, int player);
-    event ChangePlayerEvent OnChangePlayerOptions;
+    public event ChangePlayerEvent OnChangePlayerOptions;
 
     public delegate void NextPhaseEvent(int phase);
-    event NextPhaseEvent OnNextPhase;
+    public event NextPhaseEvent OnNextPhase;
 
     public delegate void NewRoundEvent();
-    event NewRoundEvent OnNewRound;
+    public event NewRoundEvent OnNewRound;
 
     public delegate void DealCardsEvent(Card card1, Card card2, int player);
-    event DealCardsEvent OnDealPlayerCards;
+    public event DealCardsEvent OnDealPlayerCards;
 
     public delegate void DealTableCardsEvent(Card[] cards);
-    event DealTableCardsEvent OnDealTableCards;
+    public event DealTableCardsEvent OnDealTableCards;
 
     public delegate void InvalidActionEvent(string error, int player);
-    event InvalidActionEvent OnInvalidAction;
+    public event InvalidActionEvent OnInvalidAction;
 
     public delegate void InvalidNewRoundEvent(string error, int player);
-    event InvalidNewRoundEvent OnInvalidNewRound;
+    public event InvalidNewRoundEvent OnInvalidNewRound;
 
     public delegate void PlayerInfoEvent(int playerID);
-    event PlayerInfoEvent OnPlayerInfoReceived;
+    public event PlayerInfoEvent OnPlayerInfoReceived;
 
     // The amount of players
     int _playerAmount;

@@ -93,11 +93,18 @@ public class Server : MonoBehaviour
 
 	void Initialize() {
 		board = new TexasHoldemBoard();
-		// Subscribe to game model events:
-		// (Note: we try to keep the game code independent from networking details.)
-		
-		//board.OnActivePlayerChange += ActivePlayerChangeRpc;
-		//board.OnGameOver += GameOverRpc;
+        // Subscribe to game model events:
+        // (Note: we try to keep the game code independent from networking details.)
+        board.OnUpdatePot += UpdatePotRpc;
+        board.OnUpdatePlayerMoney += UpdatePlayerMoneyRpc;
+        board.OnNextPlayer += NextPlayerRpc;
+        board.OnChangePlayerOptions += ChangePlayerRpc;
+        board.OnNextPhase += NextPhaseRpc;
+        board.OnNewRound += NewRoundRpc;
+        board.OnDealPlayerCards += DealPlayerCardsRpc;
+        board.OnDealTableCards += DealTableCardsRpc;
+        board.OnInvalidAction += InvalidActionRpc;
+        board.OnInvalidNewRound += InvalidNewRoundRpc;
 		
         //(Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
 
@@ -112,8 +119,13 @@ public class Server : MonoBehaviour
         dispatcher.AddListener("/NewRound", NewRoundRpc);
 	}
 
-	// ----- Handle incoming RPCs (called by dispatcher):
-	void BetRpc(OSCMessageIn message, IPEndPoint remote)
+    private void Board_OnDealPlayerCards(Card card1, Card card2, int player)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    // ----- Handle incoming RPCs (called by dispatcher):
+    void BetRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int money = message.ReadInt();
 
