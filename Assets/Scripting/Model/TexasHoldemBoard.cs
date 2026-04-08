@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 public class TexasHoldemBoard
 {
     #region variables
@@ -31,8 +30,8 @@ public class TexasHoldemBoard
     // The amount of players
     int _playerAmount;
 
-    // The current active player: 1 for player, 2 for CPU, 0 on game over.
-    int _activePlayer = 2;
+    // The current active player: 1 and above for player, 0 on game over.
+    int _activePlayer = 0;
 
     // The amount of money in the pot
     int pot = 0;
@@ -55,20 +54,8 @@ public class TexasHoldemBoard
         }
     }
     DeckOfCards deckOfCards;
-    Player[] players = new Player[2];
-    public TexasHoldemBoard(int startingMoney)
-    {
-        deckOfCards = new DeckOfCards(true);
-        Card[] cards = new Card[2];
-
-        for(int i = players.Length - 1; i >= 0; i--)
-        {
-            cards[0] = deckOfCards.DrawCard();
-            cards[1] = deckOfCards.DrawCard();
-
-            if (cards[0] != null && cards[1] != null) { players[i] = new Player(startingMoney, cards); }
-        }
-    }
+    List<Player> players = new();
+    public TexasHoldemBoard() { }
     #endregion
 
     #region Actions
@@ -117,7 +104,7 @@ public class TexasHoldemBoard
         int playersStillIn = 0;
         int lastPlayerIndex = -1;
 
-        for (int i = 0; i < players.Length; i++)
+        for (int i = 0; i < players.Count; i++)
         {
             if (players[i].isInHand)
             {
@@ -289,8 +276,16 @@ public class TexasHoldemBoard
         
         if (winner == -1)
         {
-            players[0].AddMoney(pot / 2);
-            players[1].AddMoney(pot / 2);
+            List<Player> winners = new();
+            foreach(Player player in players)
+            {
+                if (player.isInHand) winners.Add(player);
+            }
+
+            foreach(Player _winner in winners)
+            {
+                _winner.AddMoney(pot/winners.Count);
+            }
         }
         
         else 
@@ -315,10 +310,20 @@ public class TexasHoldemBoard
         int winner = HandEvaluator.Compare(players, cardsOnBoard);
         EndRound(winner);
     }
-    public void StartRound()
+    public void StartGame(int playerAmount, int startingMoney)
     {
         if (gameRunning) return;
 
+       _playerAmount = playerAmount;
+
+        for (int i = 0; i < _playerAmount; i++)
+        {
+            players.Add(null);
+        }
+    }
+    public void StartRound()
+    {
+        if (gameRunning) return;
 
         gameRunning = true;
         pot = 0;
@@ -330,7 +335,7 @@ public class TexasHoldemBoard
         Card[] cards = new Card[2];
         cardsOnBoard = new Card[5];
 
-        for (int i = 0; i <= players.Length - 1; i++)
+        for (int i = 0; i <= players.Count - 1; i++)
         {
             cards[0] = deckOfCards.DrawCard();
             cards[1] = deckOfCards.DrawCard();

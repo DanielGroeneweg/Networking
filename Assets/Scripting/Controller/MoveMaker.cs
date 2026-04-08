@@ -3,15 +3,11 @@ using UnityEngine;
 
 public class MoveMaker : MonoBehaviour
 {
-    TexasHoldemBoard board;
+    Client client;
     int betValue;
     void Start()
     {
-        ModelOwner owner = FindFirstObjectByType<ModelOwner>();
-        if (owner != null)
-        {
-            board = owner.board;
-        }
+        client = FindFirstObjectByType<Client>();
     }
     public void SetBetValue(string value)
     {
@@ -20,19 +16,19 @@ public class MoveMaker : MonoBehaviour
     }
     public void Check()
     {
-        board.Check(1);
+        client.CheckRequest();
     }
     public void Bet() {
-        board.Bet(1, betValue);
+        client.BetRequest(betValue);
     }
     public void Call() {
-        board.Call(1);
+        client.CallRequest();
     }
     public void Raise()
     {
-        board.Raise(1, betValue);
+        client.RaiseRequest(betValue);
     }
     public void Fold() {
-        board.Fold(1);
+        client.FoldRequest();
     }
 }

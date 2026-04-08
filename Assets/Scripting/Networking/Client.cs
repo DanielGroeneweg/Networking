@@ -15,21 +15,43 @@ public class Client : MonoBehaviour
 	TcpNetworkConnection connection;
 	OSCDispatcher dispatcher;
 
-	// ----- TicTacToe client things:
+	// ----- TexasHoldem client things:
 
 	// Views subscribe here, on any client:
-	public delegate void CellChangeEvent(int row, int col, int value);
-	public event CellChangeEvent OnCellChange;
+	public delegate void UpdatePotEvent(int potMoney);
+	public event UpdatePotEvent OnUpdatePot;
 
-	public delegate void ActivePlayerChangeEvent(int activePlayer);
-	public event ActivePlayerChangeEvent OnActivePlayerChange;
+    public delegate void UpdatePlayerMoneyEvent(int player, int playerMoney);
+    public event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
 
-	public event System.Action<int> OnPlayerInfoReceived;
+	public delegate void NextPlayerEvent(int player, int actionTaken);
+	public event NextPlayerEvent OnNextPlayer;
 
-	public delegate void GameOverEvent(int winner);
-	public event GameOverEvent OnGameOver;
+	public delegate void ChangePlayerEvent(int actionTaken, int pot);
+	public event ChangePlayerEvent OnChangePlayerOptions;
 
-	void Start()
+	public delegate void NextPhaseEvent(int phase);
+	public event NextPhaseEvent OnNextPhase;
+
+	public delegate void NewRoundEvent();
+	public event NewRoundEvent OnNewRound;
+
+	public delegate void DealCardsEvent(int cardRank1, int cardSuit1, int cardRank2, int cardSuit2);
+	public event DealCardsEvent OnDealCards;
+
+	public delegate void DealTableCardsEvent(int cardRank1, int cardSuit1, int cardRank2, int cardSuit2, int cardRank3, int cardSuit3, int cardRank4, int cardSuit4, int cardRank5, int cardSuit5);
+	public event DealTableCardsEvent OnDealTableCards;
+
+	public delegate void InvalidActionEvent(string error);
+	public event InvalidActionEvent OnInvalidAction;
+
+	public delegate void InvalidNewRoundEvent(string error);
+	public event InvalidNewRoundEvent OnInvalidNewRound;
+
+	public delegate void PlayerInfoEvent(int playerID);
+	public event PlayerInfoEvent OnPlayerInfoReceived;
+
+    void Start()
     {
 		TcpClient client = new TcpClient();
 		client.Connect(new IPEndPoint(ServerIP, 50006));
@@ -65,41 +87,120 @@ public class Client : MonoBehaviour
 	void Initialize() {
 		// The (optional) list of parameter types (OSCUtil.INT) lets the dispatcher filter
 		//  messages that do not satisfy the expected signature (=parameter list):
-		dispatcher.AddListener("/CellChange", CellChangeRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT); 
-		dispatcher.AddListener("/ActivePlayer", ActivePlayerChangeRpc, OSCUtil.INT);
-		dispatcher.AddListener("/GameOver", GameOverRpc, OSCUtil.INT);
-		dispatcher.AddListener("/PlayerInfo", PlayerInfoRpc, OSCUtil.INT);
-	}
+		dispatcher.AddListener("/UpdatePot", UpdatePotRpc, OSCUtil.INT);
+		dispatcher.AddListener("/UpdatePlayerMoney", UpdatePlayerMoneyRpc, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/NextPlayer", NextPlayerRpc, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/ChangePlayer", ChangePlayerOptionsRpc, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/NextPhase", NextPhaseRpc, OSCUtil.INT);
+		dispatcher.AddListener("/NewRound", NewRoundRpc);
+		dispatcher.AddListener("/DealCards", DealCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/DealTableCards", DealTableCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/InvalidAction", InvalidActionRpc, OSCUtil.STRING);
+		dispatcher.AddListener("/InvalidNewRound", InvalidNewRoundRpc, OSCUtil.STRING);
+        dispatcher.AddListener("/PlayerInfo", PlayerInfoRpc, OSCUtil.INT);
+    }
 
 	// ----- Incoming RPCs (events are triggered, and View classes subscribe):
+	void UpdatePotRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int potMoney = message.ReadInt();
+		OnUpdatePot?.Invoke(potMoney);
+	}
+    void UpdatePlayerMoneyRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        int player = message.ReadInt();
+        int playerMoney = message.ReadInt();
+        OnUpdatePlayerMoney?.Invoke(player, playerMoney);
+    }
+    void NextPlayerRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        int player = message.ReadInt();
+        int actionTaken = message.ReadInt();
+        OnNextPlayer?.Invoke(player, actionTaken);
+    }
+	void ChangePlayerOptionsRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int actionTaken = message.ReadInt();
+		int pot = message.ReadInt();
+		OnChangePlayerOptions?.Invoke(actionTaken, pot);
+	}
+	void NextPhaseRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int phase = message.ReadInt();
+		OnNextPhase?.Invoke(phase);
+	}
+    void NewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        OnNewRound?.Invoke();
+    }
+	void DealCardsRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int cardRank1 = message.ReadInt();
+		int cardSuit1 = message.ReadInt();
+		int cardRank2 = message.ReadInt();
+		int cardSuit2 = message.ReadInt();
 
-	void CellChangeRpc(OSCMessageIn message, IPEndPoint remote) {
-		int row = message.ReadInt();
-		int col = message.ReadInt();
-		int value = message.ReadInt();
-		OnCellChange?.Invoke(row, col, value);
+		OnDealCards?.Invoke(cardRank1, cardSuit1, cardRank2, cardSuit2);
 	}
-	void ActivePlayerChangeRpc(OSCMessageIn message, IPEndPoint remote) {
-		int activePlayer = message.ReadInt();
-		OnActivePlayerChange?.Invoke(activePlayer);
+	void DealTableCardsRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+        int cardRank1 = message.ReadInt();
+        int cardSuit1 = message.ReadInt();
+        int cardRank2 = message.ReadInt();
+        int cardSuit2 = message.ReadInt();
+        int cardRank3 = message.ReadInt();
+        int cardSuit3 = message.ReadInt();
+        int cardRank4 = message.ReadInt();
+        int cardSuit4 = message.ReadInt();
+        int cardRank5 = message.ReadInt();
+        int cardSuit5 = message.ReadInt();
+
+        OnDealTableCards?.Invoke(cardRank1, cardSuit1, cardRank2, cardSuit2, cardRank3, cardSuit3, cardRank4, cardSuit4, cardRank5, cardSuit5);
+    }
+	void InvalidActionRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		string error = message.ReadString();
+		OnInvalidAction?.Invoke(error);
 	}
-	void GameOverRpc(OSCMessageIn message, IPEndPoint remote) {
-		int winner = message.ReadInt();
-		OnGameOver?.Invoke(winner);
-	}
-	void PlayerInfoRpc(OSCMessageIn message, IPEndPoint remote) {
+    void InvalidNewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        string error = message.ReadString();
+        OnInvalidNewRound?.Invoke(error);
+    }
+    void PlayerInfoRpc(OSCMessageIn message, IPEndPoint remote) {
 		int playerIndex = message.ReadInt();
 		OnPlayerInfoReceived?.Invoke(playerIndex);
 	}
 
 	// ----- Outgoing RPCs (called from Controller):
-
-	public void MakeMoveRequest(int row, int col) {
-		OSCMessageOut message = new OSCMessageOut("/MakeMove").AddInt(row).AddInt(col);
+	public void CheckRequest()
+	{
+		OSCMessageOut message = new OSCMessageOut("/Check");
 		connection.Send(message.GetBytes());
 	}
-	public void ResetRequest() {
-		OSCMessageOut message = new OSCMessageOut("/Reset");
-		connection.Send(message.GetBytes());
-	}
+    public void BetRequest(int money)
+    {
+        OSCMessageOut message = new OSCMessageOut("/Bet").AddInt(money);
+        connection.Send(message.GetBytes());
+    }
+    public void CallRequest()
+    {
+        OSCMessageOut message = new OSCMessageOut("/Call");
+        connection.Send(message.GetBytes());
+    }
+    public void RaiseRequest(int money)
+    {
+        OSCMessageOut message = new OSCMessageOut("/Raise").AddInt(money);
+        connection.Send(message.GetBytes());
+    }
+    public void FoldRequest()
+    {
+        OSCMessageOut message = new OSCMessageOut("/Fold");
+        connection.Send(message.GetBytes());
+    }
+    public void NewRoundRequest()
+    {
+        OSCMessageOut message = new OSCMessageOut("/NewRound");
+        connection.Send(message.GetBytes());
+    }
 }

@@ -31,29 +31,34 @@ public class UIManager : MonoBehaviour
     [SerializeField] Button raiseButton;
     [SerializeField] Button foldButton;
 
-    TexasHoldemBoard board;
+    Client client;
     void Start()
     {
-        ModelOwner owner = FindFirstObjectByType<ModelOwner>();
-        if (owner != null)
+        client = FindFirstObjectByType<Client>();
+        if (client != null)
         {
-            board = owner.board;
-            board.OnActivePlayerChange += PlayerChange;
-            board.OnGameOver += GameOver;
-            board.OnStartRound += PresentCards;
-            board.OnPlayerMoneyChange += PresentPlayerMoney;
-            board.OnEndRound += EndRound;
+            client.OnNextPlayer += PlayerChange;
+            client.OnChangePlayerOptions += MyTurn;
+            client.OnUpdatePot += PresentPotMoney;
+            client.OnDealCards += PresentCards;
+            client.OnUpdatePlayerMoney += PresentPlayerMoney;
+
+            //board.OnGameOver += GameOver;
+            //board.OnEndRound += EndRound;
         }
     }
     private void OnDestroy()
     {
-        if (board != null)
+        if (client != null)
         {
-            board.OnActivePlayerChange -= PlayerChange;
-            board.OnGameOver -= GameOver;
-            board.OnStartRound -= PresentCards;
-            board.OnPlayerMoneyChange -= PresentPlayerMoney;
-            board.OnEndRound -= EndRound;
+            client.OnNextPlayer -= PlayerChange;
+            client.OnChangePlayerOptions -= MyTurn;
+            client.OnUpdatePot -= PresentPotMoney;
+            client.OnDealCards -= PresentCards;
+            client.OnUpdatePlayerMoney -= PresentPlayerMoney;
+
+            //board.OnGameOver -= GameOver;
+            //board.OnEndRound -= EndRound;
         }
     }
     void GameOver(int winner)
@@ -65,73 +70,67 @@ public class UIManager : MonoBehaviour
             default: gameOverText.text = "it's a draw"; break;
         }
     }
-    void PlayerChange(int player, int chosenAction, int pot)
+    void PresentPotMoney(int pot)
+    {
+        this.pot.text = $"Pot: ${pot}";
+    }
+    void PlayerChange(int player, int chosenAction)
     {
         Debug.Log("Active player: " + player);
-        switch (player)
+        activePlayerText.text = $"active player: Player {player}";
+    }
+    void MyTurn(int chosenAction, int pot)
+    {
+        List<Button> all = new List<Button>();
+        all.Add(checkButton);
+        all.Add(betButton);
+        all.Add(raiseButton);
+        all.Add(foldButton);
+        all.Add(callButton);
+        HashSet<Button> allowed = new();
+
+        switch ((BettingActions)chosenAction)
         {
-            case 1: activePlayerText.text = "active player: Player"; break;
-            case 2: activePlayerText.text = "active player: CPU"; break;
-            default: activePlayerText.text = ""; break;
+            case BettingActions.Check:
+                allowed.Add(checkButton);
+                allowed.Add(betButton);
+                allowed.Add(foldButton);
+                break;
+
+            case BettingActions.Bet:
+                allowed.Add(callButton);
+                allowed.Add(raiseButton);
+                allowed.Add(foldButton);
+                break;
+
+            case BettingActions.Call:
+                allowed.Add(callButton);
+                allowed.Add(raiseButton);
+                allowed.Add(foldButton);
+                break;
+
+            case BettingActions.Raise:
+                allowed.Add(callButton);
+                allowed.Add(raiseButton);
+                allowed.Add(foldButton);
+                break;
+
+            case BettingActions.Fold:
+                Debug.LogError("Action is set to fold, should not be possible though!");
+                break;
+
+            // None will only be sent at the start of a round/phase
+            case BettingActions.None:
+                allowed.Add(betButton);
+                allowed.Add(foldButton);
+                if (pot > 0) allowed.Add(checkButton);
+                break;
         }
 
-        // Update Pot
-        this.pot.text = $"Pot: {pot}";
-
-        // Set actions allowed to be taken
-        if (player == 1)
+        foreach (Button button in all)
         {
-            List<Button> all = new List<Button>();
-            all.Add(checkButton);
-            all.Add(betButton);
-            all.Add(raiseButton);
-            all.Add(foldButton);
-            all.Add(callButton);
-            HashSet<Button> allowed = new();
-
-            switch((BettingActions)chosenAction)
-            {
-                case BettingActions.Check:
-                    allowed.Add(checkButton);
-                    allowed.Add(betButton);
-                    allowed.Add(foldButton);
-                    break;
-
-                case BettingActions.Bet:
-                    allowed.Add(callButton);
-                    allowed.Add(raiseButton);
-                    allowed.Add(foldButton);
-                    break;
-
-                case BettingActions.Call:
-                    allowed.Add(callButton);
-                    allowed.Add(raiseButton);
-                    allowed.Add(foldButton);
-                    break;
-
-                case BettingActions.Raise:
-                    allowed.Add(callButton);
-                    allowed.Add(raiseButton);
-                    allowed.Add(foldButton);
-                    break;
-
-                case BettingActions.Fold:
-                    Debug.LogError("Action is set to fold, should not be possible though!");
-                    break;
-
-                // None will only be sent at the start of a round/phase
-                case BettingActions.None:
-                    allowed.Add(betButton);
-                    allowed.Add(foldButton);
-                    if (pot > 0) allowed.Add(checkButton);
-                    break;
-            }
-
-            foreach (Button button in all)
-            {
-                bool b = allowed.Contains(button) ? true : false;
-                button.gameObject.SetActive(b);
-            }
+            bool b = allowed.Contains(button) ? true : false;
+            button.gameObject.SetActive(b);
         }
     }
     void PresentPlayerMoney(int player, int money)

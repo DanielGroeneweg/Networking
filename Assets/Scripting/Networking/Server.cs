@@ -1,10 +1,11 @@
-using UnityEngine;
-using System.Net.Sockets;
-using System.Net;
-using System.Linq;
-using System.Collections.Generic;
 using NetworkConnections;
 using OSCTools;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using UnityEngine;
+using static UnityEngine.Rendering.DebugUI.Table;
 
 /// <summary>
 /// The Server is the class that manages network connections with all clients, and 
@@ -92,9 +93,10 @@ public class Server : MonoBehaviour
 	}
 
 	void Initialize() {
-		board = new TexasHoldemBoard(500);
+		board = new TexasHoldemBoard();
 		// Subscribe to game model events:
 		// (Note: we try to keep the game code independent from networking details.)
+		
 		//board.OnActivePlayerChange += ActivePlayerChangeRpc;
 		board.OnGameOver += GameOverRpc;
 		// (Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
@@ -102,44 +104,151 @@ public class Server : MonoBehaviour
 		// Subscribe listeners for incoming messages:
 		// The (optional) list of parameter types (OSCUtil.INT) lets the dispatcher filter
 		//  messages that do not satisfy the expected signature (=parameter list):
-		dispatcher.AddListener("/Reset", ResetRpc);
-		dispatcher.AddListener("/MakeMove", MakeMoveRpc, 
-			OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/Bet", BetRpc, OSCUtil.INT);
+		dispatcher.AddListener("/Call", CallRpc);
+		dispatcher.AddListener("/Check", CheckRpc);
+		dispatcher.AddListener("/Raise", RaiseRpc, OSCUtil.INT);
+		dispatcher.AddListener("/Fold", FoldRpc);
+        dispatcher.AddListener("/NewRound", NewRoundRpc);
 	}
 
 	// ----- Handle incoming RPCs (called by dispatcher):
+	void BetRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int money = message.ReadInt();
 
-	void MakeMoveRpc(OSCMessageIn message, IPEndPoint remote) {
-		int row = message.ReadInt();
-		int col = message.ReadInt();
-		Debug.Log($"S: Make move {row},{col}. Remote={remote}");
-		if (playerIDs.Count<2) {
-			Debug.Log("Waiting for more players");
-			return;
-		}
-		// Looping over all players to find the player ID:
-		//  a bit ugly, but acceptable since we only have two players.
-		foreach (var conn in playerIDs.Keys) {
-			Debug.Log("Checking " + conn.Remote);
-			// Warning: must use Equals, not == !
-			// https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
-			if (conn.Remote.Equals(remote)) { 
-				Debug.Log("This client is a player - allowed to make moves");
-				//board.MakeMove(row, col, playerIDs[conn]);
-			}
-		}
-	}
-	void ResetRpc(OSCMessageIn message, IPEndPoint remote) {
-		// Only allow reset when game is over, and only when sent by one of the two active players:
-		// (Note: this is a LINQ query using a lambda function. Writing a for loop
-		//  and if statement is fine too, but more code.)
-		if (board.activePlayer == 0 && playerIDs.Keys.Select((a) => a.Remote).Contains(remote)) {
-			//board.Reset();
-		} else {
-			Debug.Log("Won't reset active game / spectators cannot reset!");
-		}
-	}
+        Debug.Log($"S: bet ${money}. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Bet(playerIDs[conn], money);
+            }
+        }
+    }
+    void CheckRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        Debug.Log($"S: check. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Check(playerIDs[conn]);
+            }
+        }
+    }
+    void RaiseRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        int money = message.ReadInt();
 
+        Debug.Log($"S: Raise ${money}. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Bet(playerIDs[conn], money);
+            }
+        }
+    }
+    void CallRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        Debug.Log($"S: call. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Call(playerIDs[conn]);
+            }
+        }
+    }
+    void FoldRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        Debug.Log($"S: fold. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Fold(playerIDs[conn]);
+            }
+        }
+    }
+    void NewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        Debug.Log($"S: new round. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+        // Looping over all players to find the player ID:
+        //  a bit ugly, but acceptable since we only have two players.
+        foreach (var conn in playerIDs.Keys)
+        {
+            Debug.Log("Checking " + conn.Remote);
+            // Warning: must use Equals, not == !
+            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
+            if (conn.Remote.Equals(remote))
+            {
+                Debug.Log("This client is a player - allowed to make moves");
+                board.Fold(playerIDs[conn]);
+            }
+        }
+    }
 	// ----- Outgoing RPCs:
 	// This RPC is called when a client joins who is a player:
 	void SendPrivateInformationCommand(int playerID, TcpNetworkConnection connection) {
@@ -153,7 +262,6 @@ public class Server : MonoBehaviour
 	}
 	public void ActivePlayerChangeRpc(int player, BettingActions actionTaken, int pot) {
 		OSCMessageOut message = new OSCMessageOut("/ActivePlayer").AddInt(player);
-		// TODO Add enum
 		Broadcast(message.GetBytes());
 	}
 	public void GameOverRpc(int winner) {

@@ -22,7 +22,7 @@ public class HandEvaluator
             return 0;
         }
     }
-    public static int Compare(Player[] players, Card[] board)
+    public static int Compare(List<Player> players, Card[] board)
     {
         var hand1 = Evaluate(GetAllCards(players[0], board));
         var hand2 = Evaluate(GetAllCards(players[1], board));

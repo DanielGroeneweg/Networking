@@ -14,7 +14,7 @@ public class ModelOwner : MonoBehaviour
 
     void Awake()
     {
-        _board = new TexasHoldemBoard(playerStartingMoney);
+        _board = new TexasHoldemBoard();
         StartCoroutine(DelayedStart());
     }
     private IEnumerator DelayedStart()
