@@ -31,11 +31,20 @@ public class TexasHoldemBoard
     public delegate void InvalidActionEvent(string error, int player);
     public event InvalidActionEvent OnInvalidAction;
 
-    public delegate void InvalidNewRoundEvent(string error, int player);
+    public delegate void InvalidNewRoundEvent(string error);
     public event InvalidNewRoundEvent OnInvalidNewRound;
 
-    public delegate void PlayerInfoEvent(int playerID);
-    public event PlayerInfoEvent OnPlayerInfoReceived;
+    public delegate void InvalidNewGameEvent(string error);
+    public event InvalidNewGameEvent OnInvalidNewGame;
+
+    public delegate void PlayerInformationEvent(int playerAmount, int startingMoney);
+    public event PlayerInformationEvent OnPlayerInformation;
+
+    public delegate void RoundEndEvent(List<int> winners);
+    public event RoundEndEvent OnRoundEnd;
+
+    public delegate void GameEndEvent(int winner);
+    public event GameEndEvent OnGameEnd;
 
     // The amount of players
     int _playerAmount;
@@ -47,6 +56,8 @@ public class TexasHoldemBoard
     int pot = 0;
 
     int betToBeMatched;
+
+    bool roundRunning = false;
 
     bool gameRunning = false;
 
@@ -73,7 +84,12 @@ public class TexasHoldemBoard
     {
         if (!ValidAction(player)) return;
 
-        if (money <= 0) return;
+        if (money <= 0)
+        {
+            Logger.LogInfo($"Player {_activePlayer} put in a bet that is too small");
+            OnInvalidAction?.Invoke($"Put in a bet that is too small", player);
+            return;
+        }
 
         if (players[_activePlayer - 1].money < money)
         {
@@ -116,6 +132,7 @@ public class TexasHoldemBoard
         int playersStillIn = 0;
         int lastPlayerIndex = -1;
 
+        // Do a check for if everyone but one person folded
         for (int i = 0; i < players.Count; i++)
         {
             if (players[i].isInHand)
@@ -131,6 +148,7 @@ public class TexasHoldemBoard
             return;
         }
 
+        // More than two people still in so we move to the next turn!
         FinishTurn();
     }
     public void Raise(int player, int money)
@@ -182,7 +200,7 @@ public class TexasHoldemBoard
     bool ValidAction(int player)
     {
         // Prevent actions taken when there is no game being played
-        if (!gameRunning)
+        if (!roundRunning)
         {
             Logger.LogInfo($"There is no game being played player {player}!");
             OnInvalidAction?.Invoke($"There is no game being played player {player}!", player);
@@ -200,10 +218,8 @@ public class TexasHoldemBoard
         // Skip player who already folded
         if (!players[_activePlayer - 1].isInHand)
         {
-            Logger.LogInfo($"Player {_activePlayer} is out! Skipping turn!");
-            players[_activePlayer - 1].tookAction = true;
-
-            NextTurn(lastPickedAction);
+            Logger.LogInfo($"Player {_activePlayer} is out!");
+            OnInvalidAction?.Invoke($"Player {_activePlayer} is out!", player);
             return false;
         }
 
@@ -227,9 +243,25 @@ public class TexasHoldemBoard
     }
     void NextTurn(BettingActions actionTaken)
     {
-        // Don't assume two players!
-        Logger.LogInfo($"Moving from Player {_activePlayer} to Player {3 - _activePlayer}");
-        _activePlayer = 3 - _activePlayer;
+        int startPlayer = _activePlayer;
+        bool foundNextPlayer = false;
+        while (!foundNextPlayer)
+        {
+            int newActivePlayer = _activePlayer >= players.Count ? 1 : _activePlayer + 1;
+            Logger.LogInfo($"Moving from Player {_activePlayer} to Player {newActivePlayer}");
+            _activePlayer = newActivePlayer;
+
+            if (!players[_activePlayer].isInHand)
+                Logger.LogInfo($"Player {_activePlayer} is not in hand, next player!");
+
+            else if (players[_activePlayer].money < 0)
+                Logger.LogInfo($"Player {activePlayer} is all-in, next player!");
+
+            else
+                foundNextPlayer = true;
+
+            if (_activePlayer == startPlayer) AdvancePhase();
+        }
 
         OnNextPlayer?.Invoke(_activePlayer, (int)actionTaken);
         OnChangePlayerOptions?.Invoke((int)actionTaken, _activePlayer);
@@ -254,11 +286,13 @@ public class TexasHoldemBoard
         // Reset Players
         foreach (Player player in players)
         {
-            player.tookAction = false;
+            // Mark all-in players as already having taken an action
+            player.tookAction = player.money == 0;
         }
 
         currentPhase++;
 
+        // Deal board cards
         switch (currentPhase)
         {
             case GamePhases.Flop:
@@ -292,39 +326,58 @@ public class TexasHoldemBoard
     void EndRound(int winner)
     {
         Logger.LogInfo($"round ended with winner: player {winner}");
-        
+
+        List<int> winnersIDList = new();
+
         if (winner == -1)
         {
-            List<Player> winners = new();
-            foreach(Player player in players)
+            HashSet<Player> winners = new();
+            foreach (Player player in players)
             {
                 if (player.isInHand) winners.Add(player);
             }
 
-            foreach(Player _winner in winners)
+            for (int i = 0; i < players.Count; i++)
             {
-                _winner.AddMoney(pot/winners.Count);
+                if (winners.Contains(players[i]))
+                {
+                    winnersIDList.Add(i + 1);
+                    players[i].AddMoney(pot/winners.Count);
+                    OnUpdatePlayerMoney(i + 1, players[i].money);
+                }
             }
         }
         
-        // TODO remove 2 player assumption
-        else 
-            players[winner - 1].AddMoney(pot);
-
-        OnUpdatePlayerMoney.Invoke(1, players[0].money);
-        OnUpdatePlayerMoney.Invoke(2, players[1].money);
-
-        /*if (players[0].money <= 0 || players[1].money <= 0) OnGameOver.Invoke(winner);
-        
         else
         {
-            gameRunning = false;
-
-            //OnEndRound.Invoke(winner);
-
-            deckOfCards = new DeckOfCards(true);
+            winnersIDList.Add(winner);
+            players[winner - 1].AddMoney(pot);
+            OnUpdatePlayerMoney(winner, players[winner - 1].money);
         }
-        */
+            
+
+        pot = 0;
+        OnUpdatePot?.Invoke(pot);
+
+        List<Player> playersInGame = new();
+        foreach(Player player in players)
+        {
+            if (player.money > 0) playersInGame.Add(player);
+        }
+
+        if (playersInGame.Count == 1)
+        {
+            roundRunning = false;
+            gameRunning = false;
+            OnGameEnd.Invoke(winner);
+        }
+
+        else
+        {
+            roundRunning = false;
+
+            OnRoundEnd.Invoke(winnersIDList);
+        }
     }
     void DetermineWinner()
     {
@@ -333,7 +386,11 @@ public class TexasHoldemBoard
     }
     public void StartGame(int playerAmount, int startingMoney)
     {
-        if (gameRunning) return;
+        if (gameRunning)
+        {
+            OnInvalidNewGame.Invoke($"Game is already running with {_playerAmount} players!");
+            return;
+        }
 
        _playerAmount = playerAmount;
 
@@ -341,16 +398,37 @@ public class TexasHoldemBoard
         {
             players.Add(null);
         }
+
+        OnPlayerInformation.Invoke(playerAmount, startingMoney);
     }
     public void StartRound()
     {
-        if (gameRunning) return;
+        if (!gameRunning)
+        {
+            OnInvalidNewRound.Invoke("No game is currently running!");
+            return;
+        }
 
-        gameRunning = true;
+        if (roundRunning)
+        {
+            OnInvalidNewRound.Invoke($"round is already running, currently in phase: {currentPhase}");
+            return;
+        }
+
+        roundRunning = true;
         pot = 0;
         currentPhase = GamePhases.PreFlop;
-        players[0].isInHand = true;
-        players[1].isInHand = true;
+
+        foreach (Player player in players)
+        {
+            if (player.money > 0)
+            {
+                player.isInHand = true;
+                player.tookAction = false;
+            }
+            else
+                player.isInHand = false;
+        }
 
         deckOfCards = new DeckOfCards(true);
         Card[] cards = new Card[2];
@@ -358,6 +436,12 @@ public class TexasHoldemBoard
 
         for (int i = 0; i <= players.Count - 1; i++)
         {
+            if (!players[i].isInHand)
+            {
+                Logger.LogInfo($"Player {i + 1} has no money and can thus not participate anymore!");
+                continue;
+            }
+
             cards[0] = deckOfCards.DrawCard();
             cards[1] = deckOfCards.DrawCard();
 

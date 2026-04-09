@@ -1,7 +1,6 @@
 using NetworkConnections;
 using OSCTools;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
@@ -20,6 +19,8 @@ public class Server : MonoBehaviour
 	/// ------ TicTacToe Server code:
 	TexasHoldemBoard board;
 	Dictionary<TcpNetworkConnection, int> playerIDs = new Dictionary<TcpNetworkConnection, int>();
+
+    TcpNetworkConnection host;
 
 	void Start()
     {
@@ -54,18 +55,13 @@ public class Server : MonoBehaviour
 		}
 	}
 	void ClientJoined(TcpNetworkConnection newClient) {
-		if (playerIDs.Count < 2) {
-			// We had fewer than 2 players, so this new client will be a player.
+		if (playerIDs.Count < 6) {
+			// We had fewer than 6 players, so this new client will be a player.
 			playerIDs[newClient] = playerIDs.Count + 1;
 			Debug.Log($"Registering new player: {newClient.Remote} = player {playerIDs[newClient]}");
-			if (playerIDs.Count == 2) { // start game
-				Debug.Log("Server: starting game");
-				foreach (var pid in playerIDs.Keys) {
-					SendPrivateInformationCommand(playerIDs[pid], pid);
-				}
-			}
-		} else {
-			Debug.Log("Sorry - already have two players");
+		}
+        else {
+			Debug.Log("Sorry - already have six players");
 			// Note: this client is still allowed to join as spectator, but not as player!
 			// TODO: Send a message to this client
 		}
@@ -105,6 +101,10 @@ public class Server : MonoBehaviour
         board.OnDealTableCards += DealTableCardsRpc;
         board.OnInvalidAction += InvalidActionRpc;
         board.OnInvalidNewRound += InvalidNewRoundRpc;
+        board.OnInvalidNewGame += InvalidNewGameRpc;
+        board.OnPlayerInformation += PlayerInformationRpc;
+        board.OnRoundEnd += EndRoundRpc;
+        board.OnGameEnd += GameEndRpc;
 		
         //(Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
 
@@ -117,12 +117,8 @@ public class Server : MonoBehaviour
 		dispatcher.AddListener("/Raise", RaiseRpc, OSCUtil.INT);
 		dispatcher.AddListener("/Fold", FoldRpc);
         dispatcher.AddListener("/NewRound", NewRoundRpc);
+        dispatcher.AddListener("/NewGame", NewGameRpc);
 	}
-
-    private void Board_OnDealPlayerCards(Card card1, Card card2, int player)
-    {
-        throw new System.NotImplementedException();
-    }
 
     // ----- Handle incoming RPCs (called by dispatcher):
     void BetRpc(OSCMessageIn message, IPEndPoint remote)
@@ -247,27 +243,31 @@ public class Server : MonoBehaviour
             Debug.Log("Waiting for more players");
             return;
         }
-        // Looping over all players to find the player ID:
-        //  a bit ugly, but acceptable since we only have two players.
-        foreach (var conn in playerIDs.Keys)
+        // Check if message is sent by host
+        if (remote == host.Remote)
         {
-            Debug.Log("Checking " + conn.Remote);
-            // Warning: must use Equals, not == !
-            // https://stackoverflow.com/questions/2782973/comparison-of-ipendpoint-objects-not-working !!!
-            if (conn.Remote.Equals(remote))
-            {
-                Debug.Log("This client is a player - allowed to make moves");
-                board.Fold(playerIDs[conn]);
-            }
+            Debug.Log("S: Request sent by host");
+            //TODO Send new round start message
+        }
+    }
+    void NewGameRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        Debug.Log($"S: new game. Remote={remote}");
+        if (playerIDs.Count < 2)
+        {
+            Debug.Log("Waiting for more players");
+            return;
+        }
+
+        // Check if message is sent by host
+        if (remote == host.Remote)
+        {
+            Debug.Log("S: Request sent by host");
+            //TODO Send new game start message
         }
     }
 	// ----- Outgoing RPCs:
-	// This RPC is called when a client joins who is a player:
-	void SendPrivateInformationCommand(int playerID, TcpNetworkConnection connection) {
-		OSCMessageOut message = new OSCMessageOut("/PlayerInfo").AddInt(playerID);
-		connection.Send(message.GetBytes()); // private message
-	}
-	// These three RPCs are called by game model events (TicTacToeBoard):
+	// These RPCs are called by game model events:
     void UpdatePotRpc(int pot)
     {
         OSCMessageOut message = new OSCMessageOut("/UpdatePot").AddInt(pot);
@@ -345,17 +345,34 @@ public class Server : MonoBehaviour
             }
         }
     }
-    void InvalidNewRoundRpc(string error, int player)
+    void InvalidNewRoundRpc(string error)
     {
         OSCMessageOut message = new OSCMessageOut("/InvalidNewRound").AddString(error);
-        foreach (TcpNetworkConnection connection in playerIDs.Keys)
-        {
-            if (playerIDs[connection] == player)
-            {
-                connection.Send(message.GetBytes());
-                break;
-            }
-        }
+        host.Send(message.GetBytes());
+    }
+    void InvalidNewGameRpc(string error)
+    {
+        OSCMessageOut message = new OSCMessageOut("/InvalidNewGame").AddString(error);
+        host.Send(message.GetBytes());
+    }
+    void PlayerInformationRpc(int playerAmount, int startingMoney)
+    {
+        OSCMessageOut message = new OSCMessageOut("/PlayerInformation").AddInt(playerAmount).AddInt(startingMoney);
+        Broadcast(message.GetBytes());
+    }
+    void EndRoundRpc(List<int> winningPlayers)
+    {
+        bool[] winners = new bool[6];
+        foreach (int player in winningPlayers) winners[player - 1] = true;
+
+        OSCMessageOut message = new OSCMessageOut("/RoundEnd");
+        foreach(bool winner in winners) message.AddBool(winner);
+        Broadcast(message.GetBytes());
+    }
+    void GameEndRpc(int winner)
+    {
+        OSCMessageOut message = new OSCMessageOut("/GameEnd").AddInt(winner);
+        Broadcast(message.GetBytes());
     }
     void Broadcast(byte[] packet) {
 		foreach (var conn in connections) {

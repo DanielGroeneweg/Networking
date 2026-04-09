@@ -50,6 +50,18 @@ public class Client : MonoBehaviour
 	public delegate void InvalidNewRoundEvent(string error);
 	public event InvalidNewRoundEvent OnInvalidNewRound;
 
+	public delegate void InvalidNewGameEvent(string error);
+	public event InvalidNewGameEvent OnInvalidNewGame;
+
+	public delegate void PlayerInformationEvent(int playerAmount, int startingMoney);
+	public event PlayerInformationEvent OnPlayerInformation;
+
+	public delegate void RoundEndEvent(bool[] winners);
+	public event RoundEndEvent OnRoundEnd;
+
+	public delegate void GameEndEvent(int winner);
+	public event GameEndEvent OnGameEnd;
+
     void Start()
     {
 		TcpClient client = new TcpClient();
@@ -96,6 +108,10 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/DealTableCards", DealTableCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/InvalidAction", InvalidActionRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/InvalidNewRound", InvalidNewRoundRpc, OSCUtil.STRING);
+		dispatcher.AddListener("/InvalidNewGame", InvalidNewGameRpc, OSCUtil.STRING);
+		dispatcher.AddListener("/PlayerInformation", PlayerInformationRpc, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/RoundEnd", RoundEndRpc, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL);
+		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
     }
 
 	// ----- Incoming RPCs (events are triggered, and View classes subscribe):
@@ -167,9 +183,34 @@ public class Client : MonoBehaviour
         string error = message.ReadString();
         OnInvalidNewRound?.Invoke(error);
     }
-
-	// ----- Outgoing RPCs (called from Controller):
-	public void CheckRequest()
+	void InvalidNewGameRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+        string error = message.ReadString();
+        OnInvalidNewGame?.Invoke(error);
+    }
+	void PlayerInformationRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int playerAmount = message.ReadInt();
+		int startingMoney = message.ReadInt();
+		OnPlayerInformation?.Invoke(playerAmount, startingMoney);
+	}
+	void RoundEndRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		bool[] winners = new bool[6];
+		for (int i = 0; i < 5; i++)
+		{
+			bool winner = winners[i];
+			winner = message.ReadBool();
+		}
+		OnRoundEnd?.Invoke(winners);
+	}
+    void GameEndRpc(OSCMessageIn message, IPEndPoint remote)
+    {
+        int winner = message.ReadInt();
+        OnGameEnd?.Invoke(winner);
+    }
+    // ----- Outgoing RPCs (called from Controller):
+    public void CheckRequest()
 	{
 		OSCMessageOut message = new OSCMessageOut("/Check");
 		connection.Send(message.GetBytes());
@@ -197,6 +238,11 @@ public class Client : MonoBehaviour
     public void NewRoundRequest()
     {
         OSCMessageOut message = new OSCMessageOut("/NewRound");
+        connection.Send(message.GetBytes());
+    }
+	public void NewGameRequest(int startingMoney)
+	{
+        OSCMessageOut message = new OSCMessageOut("/NewGame").AddInt(startingMoney);
         connection.Send(message.GetBytes());
     }
 }
