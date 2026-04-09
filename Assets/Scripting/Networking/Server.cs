@@ -52,6 +52,13 @@ public class Server : MonoBehaviour
 			connections.Add(connection);
 			Debug.Log("Server: Adding new connection from " + connection.Remote);
 			ClientJoined(connection);
+
+            if (connections.Count == 1)
+            {
+                host = connection;
+                Debug.Log("Server: Host is set to " + connection.Remote);
+                host.Send(new OSCMessageOut("/SendHostInformation").GetBytes());
+            }
 		}
 	}
 	void ClientJoined(TcpNetworkConnection newClient) {
@@ -116,11 +123,12 @@ public class Server : MonoBehaviour
 		dispatcher.AddListener("/Check", CheckRpc);
 		dispatcher.AddListener("/Raise", RaiseRpc, OSCUtil.INT);
 		dispatcher.AddListener("/Fold", FoldRpc);
-        dispatcher.AddListener("/NewRound", NewRoundRpc);
-        dispatcher.AddListener("/NewGame", NewGameRpc);
+        dispatcher.AddListener("/NewRound", NewRoundRequestRpc);
+        dispatcher.AddListener("/NewGame", NewGameRequestRpc, OSCUtil.INT);
 	}
 
     // ----- Handle incoming RPCs (called by dispatcher):
+    #region Incoming
     void BetRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int money = message.ReadInt();
@@ -235,8 +243,9 @@ public class Server : MonoBehaviour
             }
         }
     }
-    void NewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+    void NewRoundRequestRpc(OSCMessageIn message, IPEndPoint remote)
     {
+        int startingMoney = message.ReadInt();
         Debug.Log($"S: new round. Remote={remote}");
         if (playerIDs.Count < 2)
         {
@@ -247,10 +256,10 @@ public class Server : MonoBehaviour
         if (remote == host.Remote)
         {
             Debug.Log("S: Request sent by host");
-            //TODO Send new round start message
+            board.StartGame(playerIDs.Count, startingMoney);
         }
     }
-    void NewGameRpc(OSCMessageIn message, IPEndPoint remote)
+    void NewGameRequestRpc(OSCMessageIn message, IPEndPoint remote)
     {
         Debug.Log($"S: new game. Remote={remote}");
         if (playerIDs.Count < 2)
@@ -263,11 +272,14 @@ public class Server : MonoBehaviour
         if (remote == host.Remote)
         {
             Debug.Log("S: Request sent by host");
-            //TODO Send new game start message
+            board.StartRound();
         }
     }
-	// ----- Outgoing RPCs:
-	// These RPCs are called by game model events:
+    #endregion
+
+    // ----- Outgoing RPCs:
+    #region Outgoing
+    // These RPCs are called by game model events:
     void UpdatePotRpc(int pot)
     {
         OSCMessageOut message = new OSCMessageOut("/UpdatePot").AddInt(pot);
@@ -368,15 +380,22 @@ public class Server : MonoBehaviour
         OSCMessageOut message = new OSCMessageOut("/RoundEnd");
         foreach(bool winner in winners) message.AddBool(winner);
         Broadcast(message.GetBytes());
+
+        OSCMessageOut hostMessage = new OSCMessageOut("/RoundEndHost");
+        host.Send(hostMessage.GetBytes());
     }
     void GameEndRpc(int winner)
     {
         OSCMessageOut message = new OSCMessageOut("/GameEnd").AddInt(winner);
         Broadcast(message.GetBytes());
+
+        OSCMessageOut hostMessage = new OSCMessageOut("/GameEndHost");
+        host.Send(hostMessage.GetBytes());
     }
     void Broadcast(byte[] packet) {
 		foreach (var conn in connections) {
 			conn.Send(packet);
 		}
 	}
+    #endregion
 }

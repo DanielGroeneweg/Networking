@@ -399,6 +399,8 @@ public class TexasHoldemBoard
             players.Add(null);
         }
 
+        gameRunning = true;
+
         OnPlayerInformation.Invoke(playerAmount, startingMoney);
     }
     public void StartRound()

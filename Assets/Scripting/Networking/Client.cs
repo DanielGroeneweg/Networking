@@ -17,14 +17,14 @@ public class Client : MonoBehaviour
 	TcpNetworkConnection connection;
 	OSCDispatcher dispatcher;
 
-	// ----- TexasHoldem client things:
-
-	// Views subscribe here, on any client:
-	public delegate void UpdatePotEvent(int potMoney);
+    // ----- TexasHoldem client things:
+    #region Events
+    // Views subscribe here, on any client:
+    public delegate void UpdatePotEvent(int potMoney);
 	public event UpdatePotEvent OnUpdatePot;
 
-    public delegate void UpdatePlayerMoneyEvent(int player, int playerMoney);
-    public event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
+	public delegate void UpdatePlayerMoneyEvent(int player, int playerMoney);
+	public event UpdatePlayerMoneyEvent OnUpdatePlayerMoney;
 
 	public delegate void NextPlayerEvent(int player, int actionTaken);
 	public event NextPlayerEvent OnNextPlayer;
@@ -62,8 +62,17 @@ public class Client : MonoBehaviour
 	public delegate void GameEndEvent(int winner);
 	public event GameEndEvent OnGameEnd;
 
+	public delegate void RoundEndHostEvent();
+	public event RoundEndHostEvent OnRoundEndHost;
+
+	public delegate void GameEndHostEvent();
+	public event GameEndHostEvent OnGameEndHost;
+
+	public delegate void SendHostInformationEvent();
+	public event SendHostInformationEvent OnSendHostInformation;
+    #endregion
     void Start()
-    {
+	{
 		TcpClient client = new TcpClient();
 		client.Connect(new IPEndPoint(ServerIP, 50006));
 		connection = new TcpNetworkConnection(client);
@@ -75,7 +84,7 @@ public class Client : MonoBehaviour
 		dispatcher = new OSCDispatcher();
 		dispatcher.ShowIncomingMessages = true;
 		Initialize();
-    }
+	}
 
 	/// <summary>
 	/// Called from NetworkConnection callback (connection.Update), when a packet arrives:
@@ -87,13 +96,13 @@ public class Client : MonoBehaviour
 	}
 
 	void Update()
-    {
+	{
 		// Check for incoming packets, and deal with them:
-		while (connection.Available()>0) {
+		while (connection.Available() > 0) {
 			HandlePacket(connection.GetPacket(), connection.Remote);
 		}
 		// TODO: disconnect handling
-    }
+	}
 
 	void Initialize() {
 		// The (optional) list of parameter types (OSCUtil.INT) lets the dispatcher filter
@@ -112,26 +121,30 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/PlayerInformation", PlayerInformationRpc, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/RoundEnd", RoundEndRpc, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL);
 		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
-    }
+		dispatcher.AddListener("/RoundEndHost", RoundEndHostRpc);
+		dispatcher.AddListener("/GameEndHost", GameEndHostRpc);
+		dispatcher.AddListener("/SendHostInformation", SendHostInformationRpc);
+	}
 
-	// ----- Incoming RPCs (events are triggered, and View classes subscribe):
-	void UpdatePotRpc(OSCMessageIn message, IPEndPoint remote)
+    // ----- Incoming RPCs (events are triggered, and View classes subscribe):
+    #region Incoming
+    void UpdatePotRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int potMoney = message.ReadInt();
 		OnUpdatePot?.Invoke(potMoney);
 	}
-    void UpdatePlayerMoneyRpc(OSCMessageIn message, IPEndPoint remote)
-    {
-        int player = message.ReadInt();
-        int playerMoney = message.ReadInt();
-        OnUpdatePlayerMoney?.Invoke(player, playerMoney);
-    }
-    void NextPlayerRpc(OSCMessageIn message, IPEndPoint remote)
-    {
-        int player = message.ReadInt();
-        int actionTaken = message.ReadInt();
-        OnNextPlayer?.Invoke(player, actionTaken);
-    }
+	void UpdatePlayerMoneyRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int player = message.ReadInt();
+		int playerMoney = message.ReadInt();
+		OnUpdatePlayerMoney?.Invoke(player, playerMoney);
+	}
+	void NextPlayerRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int player = message.ReadInt();
+		int actionTaken = message.ReadInt();
+		OnNextPlayer?.Invoke(player, actionTaken);
+	}
 	void ChangePlayerOptionsRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int actionTaken = message.ReadInt();
@@ -143,10 +156,10 @@ public class Client : MonoBehaviour
 		int phase = message.ReadInt();
 		OnNextPhase?.Invoke(phase);
 	}
-    void NewRoundRpc(OSCMessageIn message, IPEndPoint remote)
-    {
-        OnNewRound?.Invoke();
-    }
+	void NewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnNewRound?.Invoke();
+	}
 	void DealCardsRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int cardRank1 = message.ReadInt();
@@ -160,34 +173,34 @@ public class Client : MonoBehaviour
 	{
 		List<int> cardInts = new();
 
-        for (int i = 0; i < 10; i++) cardInts.Add(message.ReadInt());
+		for (int i = 0; i < 10; i++) cardInts.Add(message.ReadInt());
 
 		Card[] cards = new Card[5];
 
-		for(int i = 0; i < 5; i++)
+		for (int i = 0; i < 5; i++)
 		{
 			if (cardInts[i] == -1) continue;
 
-			cards[i] = (new Card((Suits)cardInts[(i *2 ) + 1], (Ranks)cardInts[(i * 2)]));
+			cards[i] = (new Card((Suits)cardInts[(i * 2) + 1], (Ranks)cardInts[(i * 2)]));
 		}
 
-        OnDealTableCards?.Invoke(cards);
-    }
+		OnDealTableCards?.Invoke(cards);
+	}
 	void InvalidActionRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		string error = message.ReadString();
 		OnInvalidAction?.Invoke(error);
 	}
-    void InvalidNewRoundRpc(OSCMessageIn message, IPEndPoint remote)
-    {
-        string error = message.ReadString();
-        OnInvalidNewRound?.Invoke(error);
-    }
+	void InvalidNewRoundRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		string error = message.ReadString();
+		OnInvalidNewRound?.Invoke(error);
+	}
 	void InvalidNewGameRpc(OSCMessageIn message, IPEndPoint remote)
 	{
-        string error = message.ReadString();
-        OnInvalidNewGame?.Invoke(error);
-    }
+		string error = message.ReadString();
+		OnInvalidNewGame?.Invoke(error);
+	}
 	void PlayerInformationRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		int playerAmount = message.ReadInt();
@@ -204,12 +217,27 @@ public class Client : MonoBehaviour
 		}
 		OnRoundEnd?.Invoke(winners);
 	}
-    void GameEndRpc(OSCMessageIn message, IPEndPoint remote)
-    {
-        int winner = message.ReadInt();
-        OnGameEnd?.Invoke(winner);
-    }
+	void GameEndRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int winner = message.ReadInt();
+		OnGameEnd?.Invoke(winner);
+	}
+	void RoundEndHostRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnRoundEndHost?.Invoke();
+	}
+	void GameEndHostRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnGameEndHost?.Invoke();
+	}
+	void SendHostInformationRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnSendHostInformation?.Invoke();
+	}
+    #endregion
+
     // ----- Outgoing RPCs (called from Controller):
+    #region Outgoing
     public void CheckRequest()
 	{
 		OSCMessageOut message = new OSCMessageOut("/Check");
@@ -245,4 +273,5 @@ public class Client : MonoBehaviour
         OSCMessageOut message = new OSCMessageOut("/NewGame").AddInt(startingMoney);
         connection.Send(message.GetBytes());
     }
+    #endregion
 }
