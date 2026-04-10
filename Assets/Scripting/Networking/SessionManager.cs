@@ -26,9 +26,6 @@ public class SessionManager : MonoBehaviour {
 		if (GUILayout.Button("Client")) {
 			StartClient();
 		}
-		if (GUILayout.Button("Server")) {
-			StartServer();
-		}
 	}
 
 	void StartServer() {

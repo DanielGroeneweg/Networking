@@ -59,7 +59,7 @@ public class TexasHoldemBoard
 
     bool roundRunning = false;
 
-    bool gameRunning = false;
+    public bool gameRunning { get; private set; } = false;
 
     GamePhases currentPhase = GamePhases.PreFlop;
 

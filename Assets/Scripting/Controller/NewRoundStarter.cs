@@ -2,17 +2,14 @@ using UnityEngine;
 
 public class NewRoundStarter : MonoBehaviour
 {
-    TexasHoldemBoard board;
+    Client client;
     private void Start()
     {
-        ModelOwner owner = FindFirstObjectByType<ModelOwner>();
-        if (owner != null)
-        {
-            board = owner.board;
-        }
+        Client client = FindFirstObjectByType<Client>();
     }
     public void StartRound()
     {
-        board.StartRound();
+        if (client == null) return;
+        client.NewRoundRequest();
     }
 }

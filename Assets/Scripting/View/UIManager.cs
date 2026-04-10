@@ -16,6 +16,10 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     List<TMP_Text> moneyDisplayers = new();
     [SerializeField]
+    TMP_Text displayPrefab;
+    [SerializeField]
+    GameObject moneyParent;
+    [SerializeField]
     TMP_Text pot;
 
     [Header("Player")]
@@ -31,6 +35,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] Button raiseButton;
     [SerializeField] Button foldButton;
 
+    [Header("host")]
+    [SerializeField] GameObject hostPanel;
+
     Client client;
     void Start()
     {
@@ -42,6 +49,9 @@ public class UIManager : MonoBehaviour
             client.OnUpdatePot += PresentPotMoney;
             client.OnDealCards += PresentCards;
             client.OnUpdatePlayerMoney += PresentPlayerMoney;
+            client.OnSendHostInformation += EnableHostLobbyPanel;
+            client.OnPlayerInformation += DisableHostLobbyPanel;
+            client.OnPlayerInformation += SetUpMoneyUI;
 
             //board.OnGameOver += GameOver;
             //board.OnEndRound += EndRound;
@@ -56,11 +66,16 @@ public class UIManager : MonoBehaviour
             client.OnUpdatePot -= PresentPotMoney;
             client.OnDealCards -= PresentCards;
             client.OnUpdatePlayerMoney -= PresentPlayerMoney;
+            client.OnSendHostInformation -= EnableHostLobbyPanel;
+            client.OnPlayerInformation -= DisableHostLobbyPanel;
+            client.OnPlayerInformation -= SetUpMoneyUI;
 
             //board.OnGameOver -= GameOver;
             //board.OnEndRound -= EndRound;
         }
     }
+    void EnableHostLobbyPanel() { hostPanel.SetActive(true); }
+    void DisableHostLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
     {
         switch (winner)
@@ -135,7 +150,7 @@ public class UIManager : MonoBehaviour
     }
     void PresentPlayerMoney(int player, int money)
     {
-        moneyDisplayers[player - 1].text = $"Player {player}: {money}";
+        moneyDisplayers[player - 1].text = $"Player {player}: ${money}";
     }
     void PresentCards(int card1Rank, int card1Suit, int card2Rank, int card2Suit)
     {
@@ -149,5 +164,14 @@ public class UIManager : MonoBehaviour
     {
         restartScreen.SetActive(true);
         resultText.text = $"Player {winner} wins!";
+    }
+    void SetUpMoneyUI(int playerAmount, int startingMoney)
+    {
+        for (int i = 1; i <= playerAmount; i++)
+        {
+            TMP_Text playerText = Instantiate(displayPrefab, Vector3.zero, Quaternion.identity, moneyParent.transform);
+            playerText.text = $"Player {i}: ${startingMoney}";
+            moneyDisplayers.Add(playerText);
+        }
     }
 }

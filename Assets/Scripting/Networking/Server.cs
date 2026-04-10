@@ -53,6 +53,8 @@ public class Server : MonoBehaviour
 			Debug.Log("Server: Adding new connection from " + connection.Remote);
 			ClientJoined(connection);
 
+            // Find the host
+
             if (connections.Count == 1)
             {
                 host = connection;
@@ -250,6 +252,7 @@ public class Server : MonoBehaviour
         if (playerIDs.Count < 2)
         {
             Debug.Log("Waiting for more players");
+            InvalidNewRoundRpc($"Need more players! currently {playerIDs.Count} player(s) in lobby");
             return;
         }
         // Check if message is sent by host
@@ -265,6 +268,7 @@ public class Server : MonoBehaviour
         if (playerIDs.Count < 2)
         {
             Debug.Log("Waiting for more players");
+            InvalidNewGameRpc($"Need more players! currently {playerIDs.Count} player(s) in lobby");
             return;
         }
 
@@ -272,7 +276,7 @@ public class Server : MonoBehaviour
         if (remote == host.Remote)
         {
             Debug.Log("S: Request sent by host");
-            board.StartRound();
+            board.StartGame(playerIDs.Count, message.ReadInt());
         }
     }
     #endregion
