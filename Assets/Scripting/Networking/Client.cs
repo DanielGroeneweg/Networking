@@ -62,12 +62,6 @@ public class Client : MonoBehaviour
 	public delegate void GameEndEvent(int winner);
 	public event GameEndEvent OnGameEnd;
 
-	public delegate void RoundEndHostEvent();
-	public event RoundEndHostEvent OnRoundEndHost;
-
-	public delegate void GameEndHostEvent();
-	public event GameEndHostEvent OnGameEndHost;
-
 	public delegate void SendHostInformationEvent();
 	public event SendHostInformationEvent OnSendHostInformation;
     #endregion
@@ -121,8 +115,6 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/PlayerInformation", PlayerInformationRpc, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/RoundEnd", RoundEndRpc, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL);
 		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
-		dispatcher.AddListener("/RoundEndHost", RoundEndHostRpc);
-		dispatcher.AddListener("/GameEndHost", GameEndHostRpc);
 		dispatcher.AddListener("/SendHostInformation", SendHostInformationRpc);
 	}
 
@@ -221,14 +213,6 @@ public class Client : MonoBehaviour
 	{
 		int winner = message.ReadInt();
 		OnGameEnd?.Invoke(winner);
-	}
-	void RoundEndHostRpc(OSCMessageIn message, IPEndPoint remote)
-	{
-		OnRoundEndHost?.Invoke();
-	}
-	void GameEndHostRpc(OSCMessageIn message, IPEndPoint remote)
-	{
-		OnGameEndHost?.Invoke();
 	}
 	void SendHostInformationRpc(OSCMessageIn message, IPEndPoint remote)
 	{

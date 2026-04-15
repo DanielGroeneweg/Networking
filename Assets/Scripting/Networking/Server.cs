@@ -384,17 +384,11 @@ public class Server : MonoBehaviour
         OSCMessageOut message = new OSCMessageOut("/RoundEnd");
         foreach(bool winner in winners) message.AddBool(winner);
         Broadcast(message.GetBytes());
-
-        OSCMessageOut hostMessage = new OSCMessageOut("/RoundEndHost");
-        host.Send(hostMessage.GetBytes());
     }
     void GameEndRpc(int winner)
     {
         OSCMessageOut message = new OSCMessageOut("/GameEnd").AddInt(winner);
         Broadcast(message.GetBytes());
-
-        OSCMessageOut hostMessage = new OSCMessageOut("/GameEndHost");
-        host.Send(hostMessage.GetBytes());
     }
     void Broadcast(byte[] packet) {
 		foreach (var conn in connections) {

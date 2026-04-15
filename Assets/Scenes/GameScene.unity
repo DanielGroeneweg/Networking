@@ -3244,6 +3244,21 @@ MonoBehaviour:
   raiseButton: {fileID: 687132731}
   foldButton: {fileID: 805061921}
   hostPanel: {fileID: 1185032769}
+  enableHostButtons:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1332759153}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
 --- !u!1 &1272808212
 GameObject:
   m_ObjectHideFlags: 0
@@ -3590,7 +3605,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1332759154
 RectTransform:
   m_ObjectHideFlags: 0

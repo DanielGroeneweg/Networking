@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using UnityEngine.Events;
 public class UIManager : MonoBehaviour
 {
     [Header("Game")]
@@ -37,6 +38,7 @@ public class UIManager : MonoBehaviour
 
     [Header("host")]
     [SerializeField] GameObject hostPanel;
+    [SerializeField] UnityEvent enableHostButtons;
 
     Client client;
     void Start()
@@ -50,11 +52,11 @@ public class UIManager : MonoBehaviour
             client.OnDealCards += PresentCards;
             client.OnUpdatePlayerMoney += PresentPlayerMoney;
             client.OnSendHostInformation += EnableHostLobbyPanel;
+            client.OnSendHostInformation += EnableHostButtons;
             client.OnPlayerInformation += DisableHostLobbyPanel;
             client.OnPlayerInformation += SetUpMoneyUI;
-
-            //board.OnGameOver += GameOver;
-            //board.OnEndRound += EndRound;
+            client.OnGameEnd += GameOver;
+            client.OnRoundEnd += EndRound;
         }
     }
     private void OnDestroy()
@@ -67,14 +69,15 @@ public class UIManager : MonoBehaviour
             client.OnDealCards -= PresentCards;
             client.OnUpdatePlayerMoney -= PresentPlayerMoney;
             client.OnSendHostInformation -= EnableHostLobbyPanel;
+            client.OnSendHostInformation -= EnableHostButtons;
             client.OnPlayerInformation -= DisableHostLobbyPanel;
             client.OnPlayerInformation -= SetUpMoneyUI;
-
-            //board.OnGameOver -= GameOver;
-            //board.OnEndRound -= EndRound;
+            client.OnGameEnd -= GameOver;
+            client.OnRoundEnd -= EndRound;
         }
     }
     void EnableHostLobbyPanel() { hostPanel.SetActive(true); }
+    void EnableHostButtons() { enableHostButtons?.Invoke(); }
     void DisableHostLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
     {
@@ -160,10 +163,10 @@ public class UIManager : MonoBehaviour
         card1.PresentCard(firstCard);
         card2.PresentCard(secondCard);
     }
-    void EndRound(int winner)
+    void EndRound(bool[] winners)
     {
         restartScreen.SetActive(true);
-        resultText.text = $"Player {winner} wins!";
+        resultText.text = $"Player {winners[0]} wins!";
     }
     void SetUpMoneyUI(int playerAmount, int startingMoney)
     {
