@@ -107,7 +107,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/ChangePlayer", ChangePlayerOptionsRpc, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/NextPhase", NextPhaseRpc, OSCUtil.INT);
 		dispatcher.AddListener("/NewRound", NewRoundRpc);
-		dispatcher.AddListener("/DealCards", DealCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/DealPlayerCards", DealCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/DealTableCards", DealTableCardsRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/InvalidAction", InvalidActionRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/InvalidNewRound", InvalidNewRoundRpc, OSCUtil.STRING);
@@ -171,7 +171,7 @@ public class Client : MonoBehaviour
 
 		for (int i = 0; i < 5; i++)
 		{
-			if (cardInts[i] == -1) continue;
+			if (cardInts[i*2] == -1) continue;
 
 			cards[i] = (new Card((Suits)cardInts[(i * 2) + 1], (Ranks)cardInts[(i * 2)]));
 		}

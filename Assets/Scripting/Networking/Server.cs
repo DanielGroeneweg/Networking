@@ -299,9 +299,9 @@ public class Server : MonoBehaviour
         OSCMessageOut message = new OSCMessageOut("/NextPlayer").AddInt(activePlayer).AddInt(actionTaken);
         Broadcast(message.GetBytes());
     }
-    void ChangePlayerRpc(int actionTaken, int player)
+    void ChangePlayerRpc(int actionTaken, int player, int pot)
     {
-        OSCMessageOut message = new OSCMessageOut("/ChangePlayer").AddInt(actionTaken);
+        OSCMessageOut message = new OSCMessageOut("/ChangePlayer").AddInt(actionTaken).AddInt(pot);
 
         foreach(TcpNetworkConnection connection in playerIDs.Keys)
         {

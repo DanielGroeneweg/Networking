@@ -13,7 +13,7 @@ public class TexasHoldemBoard
     public delegate void NextPlayerEvent(int activePlayer, int actionTaken);
     public event NextPlayerEvent OnNextPlayer;
 
-    public delegate void ChangePlayerEvent(int actionTaken, int player);
+    public delegate void ChangePlayerEvent(int actionTaken, int player, int pot);
     public event ChangePlayerEvent OnChangePlayerOptions;
 
     public delegate void NextPhaseEvent(int phase);
@@ -100,8 +100,9 @@ public class TexasHoldemBoard
 
         pot += money;
         OnUpdatePot?.Invoke(pot);
-        OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
+
         players[_activePlayer - 1].Bet(money);
+        OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
 
         betToBeMatched = players[_activePlayer - 1].betMoney;
 
@@ -170,12 +171,14 @@ public class TexasHoldemBoard
             OnInvalidAction?.Invoke($"You don't have enough money to bet {moneyIncrease}. Money: {players[_activePlayer - 1].money}", player);
             return;
         }
-
-        players[_activePlayer - 1].Bet(moneyIncrease);
-        betToBeMatched = players[_activePlayer - 1].betMoney;
         pot += moneyIncrease;
         OnUpdatePot?.Invoke(pot);
+
+        players[_activePlayer - 1].Bet(moneyIncrease);
         OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
+
+        betToBeMatched = players[_activePlayer - 1].betMoney;
+
         lastPickedAction = BettingActions.Raise;
 
         Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
@@ -187,10 +190,13 @@ public class TexasHoldemBoard
         if (!ValidAction(player)) return;
 
         int moneyForPot = (int)MathF.Min(players[_activePlayer - 1].money, betToBeMatched - players[_activePlayer - 1].betMoney);
+
         pot += moneyForPot;
         OnUpdatePot?.Invoke(pot);
+
         players[_activePlayer - 1].Bet(moneyForPot);
         OnUpdatePlayerMoney?.Invoke(_activePlayer, players[_activePlayer - 1].money);
+
         lastPickedAction = BettingActions.Call;
 
         Logger.LogInfo($"Player {_activePlayer} took action: {lastPickedAction}, money in pot: {pot} | player money: {players[activePlayer - 1].money}");
@@ -251,11 +257,11 @@ public class TexasHoldemBoard
             Logger.LogInfo($"Moving from Player {_activePlayer} to Player {newActivePlayer}");
             _activePlayer = newActivePlayer;
 
-            if (!players[_activePlayer].isInHand)
+            if (!players[_activePlayer - 1].isInHand)
                 Logger.LogInfo($"Player {_activePlayer} is not in hand, next player!");
 
-            else if (players[_activePlayer].money < 0)
-                Logger.LogInfo($"Player {activePlayer} is all-in, next player!");
+            else if (players[_activePlayer - 1].money < 0)
+                Logger.LogInfo($"Player {_activePlayer} is all-in, next player!");
 
             else
                 foundNextPlayer = true;
@@ -264,7 +270,7 @@ public class TexasHoldemBoard
         }
 
         OnNextPlayer?.Invoke(_activePlayer, (int)actionTaken);
-        OnChangePlayerOptions?.Invoke((int)actionTaken, _activePlayer);
+        OnChangePlayerOptions?.Invoke((int)actionTaken, _activePlayer, pot);
     }
     bool IsBettingRoundComplete()
     {
@@ -396,12 +402,14 @@ public class TexasHoldemBoard
 
         for (int i = 0; i < _playerAmount; i++)
         {
-            players.Add(null);
+            players.Add(new Player(startingMoney, new Card[2]));
         }
 
         gameRunning = true;
 
         OnPlayerInformation.Invoke(playerAmount, startingMoney);
+
+        StartRound();
     }
     public void StartRound()
     {
