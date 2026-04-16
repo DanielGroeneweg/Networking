@@ -259,7 +259,7 @@ public class Server : MonoBehaviour
         if (remote == host.Remote)
         {
             Debug.Log("S: Request sent by host");
-            board.StartGame(playerIDs.Count, startingMoney);
+            board.StartRound();
         }
     }
     void NewGameRequestRpc(OSCMessageIn message, IPEndPoint remote)

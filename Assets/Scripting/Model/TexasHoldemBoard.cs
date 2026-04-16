@@ -203,6 +203,12 @@ public class TexasHoldemBoard
 
         FinishTurn();
     }
+    /// <summary>
+    /// Returns whether a player taking an action is doing so while a game is being player, it's their turn
+    /// and they are still participating.
+    /// </summary>
+    /// <param name="player"></param>
+    /// <returns></returns>
     bool ValidAction(int player)
     {
         // Prevent actions taken when there is no game being played
@@ -234,6 +240,9 @@ public class TexasHoldemBoard
     #endregion
 
     #region GameLogic
+    /// <summary>
+    /// Finishes a player's turn, also checks whether a betting round has been completed or not.
+    /// </summary>
     void FinishTurn()
     {
         players[_activePlayer - 1].tookAction = true;
@@ -247,12 +256,18 @@ public class TexasHoldemBoard
         else
             NextTurn(lastPickedAction);
     }
+    /// <summary>
+    /// Finds the next player that is still playing and not yet all-in.
+    /// </summary>
+    /// <param name="actionTaken"></param>
     void NextTurn(BettingActions actionTaken)
     {
         int startPlayer = _activePlayer;
         bool foundNextPlayer = false;
         while (!foundNextPlayer)
         {
+            if (EveryoneAllIn()) DealRemainingCards();
+
             int newActivePlayer = _activePlayer >= players.Count ? 1 : _activePlayer + 1;
             Logger.LogInfo($"Moving from Player {_activePlayer} to Player {newActivePlayer}");
             _activePlayer = newActivePlayer;
@@ -260,18 +275,59 @@ public class TexasHoldemBoard
             if (!players[_activePlayer - 1].isInHand)
                 Logger.LogInfo($"Player {_activePlayer} is not in hand, next player!");
 
-            else if (players[_activePlayer - 1].money < 0)
+            else if (players[_activePlayer - 1].money <= 0)
                 Logger.LogInfo($"Player {_activePlayer} is all-in, next player!");
 
             else
                 foundNextPlayer = true;
 
+            // Safety break
             if (_activePlayer == startPlayer) AdvancePhase();
         }
 
         OnNextPlayer?.Invoke(_activePlayer, (int)actionTaken);
         OnChangePlayerOptions?.Invoke((int)actionTaken, _activePlayer, pot);
     }
+    /// <summary>
+    /// Returns whether every player in the game is all-in or not.
+    /// </summary>
+    /// <returns></returns>
+    bool EveryoneAllIn()
+    {
+        foreach(Player player in players)
+        {
+            if (player.isInHand && player.money > 0) return false; 
+        }
+        return true;
+    }
+    /// <summary>
+    /// Deals cards to the board up until all cards are dealt. Then moves game to the showdown where a winner is determined.
+    /// Is only called when every active player is all-in.
+    /// </summary>
+    void DealRemainingCards()
+    {
+        for (int i = cardsOnBoard.Length - 1; i >= 0; i--)
+        {
+            Card card = cardsOnBoard[i];
+            if (card == null)
+            {
+                card = deckOfCards.DrawCard();
+                cardsOnBoard[i] = card;
+                Logger.LogInfo($"New cards: {cardsOnBoard[i].ToString()}");
+            }
+        }
+
+        OnDealTableCards?.Invoke(cardsOnBoard);
+        currentPhase = GamePhases.Showdown;
+        OnNextPhase?.Invoke((int)currentPhase);
+        DetermineWinner();
+    }
+    /// <summary>
+    /// Returns true when all apply:
+    /// 1) All players who can take an action took one.
+    /// 2) Everyone who is not (yet) all-in, has bet the same amount of money.
+    /// </summary>
+    /// <returns></returns>
     bool IsBettingRoundComplete()
     {
         foreach (Player player in players)
@@ -287,6 +343,9 @@ public class TexasHoldemBoard
         Logger.LogInfo("betting round ended!");
         return true;
     }
+    /// <summary>
+    /// Advances a round to the next phase, dealing cards for the flop, river and turn, while determining a winner in the showdown.
+    /// </summary>
     void AdvancePhase()
     {
         // Reset Players
@@ -329,12 +388,18 @@ public class TexasHoldemBoard
 
         else NextTurn(BettingActions.None);
     }
+    /// <summary>
+    /// Finish up a round by sending information about who won the round.
+    /// Additionally, also check if there is a winner for the entire game yet.
+    /// </summary>
+    /// <param name="winner"></param>
     void EndRound(int winner)
     {
         Logger.LogInfo($"round ended with winner: player {winner}");
 
         List<int> winnersIDList = new();
 
+        // Multiple winners (tied), add all winners to a list, then give them money
         if (winner == -1)
         {
             HashSet<Player> winners = new();
@@ -354,6 +419,7 @@ public class TexasHoldemBoard
             }
         }
         
+        // only 1 winner, give them the money!
         else
         {
             winnersIDList.Add(winner);
@@ -361,16 +427,18 @@ public class TexasHoldemBoard
             OnUpdatePlayerMoney(winner, players[winner - 1].money);
         }
             
-
+        // Reset Pot
         pot = 0;
         OnUpdatePot?.Invoke(pot);
 
+        // Get a list of all players who have not yet gone bankrupt
         List<Player> playersInGame = new();
         foreach(Player player in players)
         {
             if (player.money > 0) playersInGame.Add(player);
         }
 
+        // only 1 player with money remains, game ended with a winner!
         if (playersInGame.Count == 1)
         {
             roundRunning = false;
@@ -378,6 +446,7 @@ public class TexasHoldemBoard
             OnGameEnd.Invoke(winner);
         }
 
+        // Still multiple people with money in the game, send winning everyone player(s) information!
         else
         {
             roundRunning = false;
@@ -390,6 +459,12 @@ public class TexasHoldemBoard
         int winner = HandEvaluator.Compare(players, cardsOnBoard);
         EndRound(winner);
     }
+    /// <summary>
+    /// Starts a new game. It creates a player class for each player and grants them the starting money amount.
+    /// Should only be called from the host.
+    /// </summary>
+    /// <param name="playerAmount"></param>
+    /// <param name="startingMoney"></param>
     public void StartGame(int playerAmount, int startingMoney)
     {
         if (gameRunning)
@@ -411,6 +486,10 @@ public class TexasHoldemBoard
 
         StartRound();
     }
+    /// <summary>
+    /// Starts a new round, it starts by dealing each participating player a hand of 2 cards.
+    /// Should only be called from the host.
+    /// </summary>
     public void StartRound()
     {
         if (!gameRunning)

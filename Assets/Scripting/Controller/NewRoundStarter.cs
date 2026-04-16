@@ -5,11 +5,15 @@ public class NewRoundStarter : MonoBehaviour
     Client client;
     private void Start()
     {
-        Client client = FindFirstObjectByType<Client>();
+        client = FindFirstObjectByType<Client>();
     }
     public void StartRound()
     {
-        if (client == null) return;
+        if (client == null)
+        {
+            Debug.Log("V: client is null");
+            return;
+        }
         client.NewRoundRequest();
     }
 }

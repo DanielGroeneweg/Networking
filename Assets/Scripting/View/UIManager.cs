@@ -40,6 +40,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] GameObject hostPanel;
     [SerializeField] UnityEvent enableHostButtons;
 
+    [Header("Other")]
+    [SerializeField] UnityEvent onRoundStart;
     Client client;
     void Start()
     {
@@ -57,6 +59,7 @@ public class UIManager : MonoBehaviour
             client.OnPlayerInformation += SetUpMoneyUI;
             client.OnGameEnd += GameOver;
             client.OnRoundEnd += EndRound;
+            client.OnNewRound += NewRoundStart;
         }
     }
     private void OnDestroy()
@@ -74,7 +77,12 @@ public class UIManager : MonoBehaviour
             client.OnPlayerInformation -= SetUpMoneyUI;
             client.OnGameEnd -= GameOver;
             client.OnRoundEnd -= EndRound;
+            client.OnNewRound -= NewRoundStart;
         }
+    }
+    void NewRoundStart()
+    {
+        onRoundStart?.Invoke();
     }
     void EnableHostLobbyPanel() { hostPanel.SetActive(true); }
     void EnableHostButtons() { enableHostButtons?.Invoke(); }
