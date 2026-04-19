@@ -1,10 +1,11 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 public class CardPresenter : MonoBehaviour
 {
-    [SerializeField] private TMP_Text cardLabel;
+    [SerializeField] private Image cardImage;
     public void PresentCard(Card card)
     {
-        cardLabel.text = $"{card.rank}\nof\n{card.suit}";
+        cardImage.sprite = CardDataBase.instance.GetCardImage(card.suit, card.rank);
     }
 }
