@@ -6,4 +6,4 @@ public enum Ranks
 }
 public enum GamePhases { PreFlop, Flop, Turn, River, Showdown }
 public enum BettingActions { Check, Bet, Call, Raise, Fold, None }
-public enum Combinations { HighCard = 1, Pair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush, RoyalFlush }
+public enum Combinations { HighCard = 1, Pair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush }

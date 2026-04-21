@@ -456,7 +456,7 @@ public class TexasHoldemBoard
     }
     void DetermineWinner()
     {
-        int winner = HandEvaluator.Compare(players, cardsOnBoard);
+        int winner = HandEvaluator.GetWinners(players, cardsOnBoard)[0];
         EndRound(winner);
     }
     /// <summary>
