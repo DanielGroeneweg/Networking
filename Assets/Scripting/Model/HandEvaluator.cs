@@ -47,30 +47,48 @@ public class HandEvaluator
         // If multiple people have the best combination, try and apply tiebreaker methods
         if (winners.Count > 1)
         {
-            switch (winningCombination)
+            // Create a list to start comparing hands
+            List<int> best = new();
+            EvaluatedHand bestHand = null;
+
+            // Add the first player
+            best.Add(winners[0]);
+            bestHand = potentialWinners[winners[0]];
+
+            // Start at 1 to skip the first player who was already added
+            for(int i = 1; i < winners.Count; i++)
             {
-                case Combinations.HighCard:
+                int playerID = winners[i];
+                EvaluatedHand currentHand = potentialWinners[playerID];
+
+                // Compare hands
+                int betterHand = CompareEvaluatedHands(currentHand, bestHand);
+
+                // -1 is currentHand, 0 is a tie, 1 is bestHand
+                switch(betterHand)
+                {
+                    // New hand is better, remove everyone who was tied (or leading) and set this new hand to the best.
+                    case -1:
+                        best.Clear();
+                        best.Add(playerID);
+                        bestHand = currentHand;
+                        break;
                     
-                    break;
-                case Combinations.Pair:
-                    break;
-                case Combinations.TwoPair:
-                    break;
-                case Combinations.ThreeOfAKind:
-                    break;
-                case Combinations.Straight:
-                    break;
-                case Combinations.Flush:
-                    break;
-                case Combinations.FullHouse:
-                    break;
-                case Combinations.FourOfAKind:
-                    break;
-                case Combinations.StraightFlush:
-                    break;
+                    // Tie! Simply add this new player to the list of winner.
+                    case 0:
+                        best.Add(playerID);
+                        break;
+
+                    // Standing hand is better, no need to do anything.
+                    case 1:
+                        break;
+                }
             }
+
+            return best;
         }
 
+        // Return the list of 1 winner if the size of winners is 1
         return winners;
     }
     /// <summary>
@@ -89,7 +107,7 @@ public class HandEvaluator
 
         // Create a list of all values in the hand from high to low
         List<int> values = GetValues(cards);
-        values.OrderByDescending(value => value);
+        values.OrderByDescending(value => value).ToList();
 
         // Create groups of cards with the same value (I.E. 2x king, 1x 8)
         Dictionary<int, int> valueCounts = GetValueCounts(values);
@@ -99,7 +117,8 @@ public class HandEvaluator
             // Group with most amount of cards goes first
             .OrderByDescending(keyValue => keyValue.Value)
             // Within that order, groups of higher card values come first
-            .ThenByDescending(keyValue => keyValue.Key);
+            .ThenByDescending(keyValue => keyValue.Key)
+            .ToList();
 
         // Get a flush reference
         List<Card> cardsInFlush = GetFlush(cards);
@@ -150,7 +169,7 @@ public class HandEvaluator
             bestHand.combinationValues = new List<int> { groups[0].Key };
 
             // 5th card should be the highest value card, not including the ones in the four of a kind.
-            while (values.Contains(groups[0].Value)) values.Remove(groups[0].Value);
+            while (values.Contains(groups[0].Key)) values.Remove(groups[0].Key);
             bestHand.tieBrakerValues = new List<int>() { values[0] };
             return bestHand;
         }
@@ -250,7 +269,54 @@ public class HandEvaluator
     }
 
     #region EvaluationHelperMethods
-    static bool IsValue(int valueToCheck, int targetValue) { return valueToCheck == targetValue; }
+    /// <summary>
+    /// Checks two EvaluatedHands and returns the better one
+    /// 0 on a tie
+    /// -1 on hand a
+    /// 1 on hand b
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    static int CompareEvaluatedHands(EvaluatedHand a, EvaluatedHand b)
+    {
+        // Compare combination values
+        int result = CompareLists(a.combinationValues, b.combinationValues);
+        if (result != 0) return result;
+
+        // If no winner is found, check tiebrakers
+        return CompareLists(a.tieBrakerValues, b.tieBrakerValues);
+    }
+    /// <summary>
+    /// Checks for two lists of integers and returns which one is greater
+    /// 0 on a tie
+    /// -1 on list a
+    /// 1 on list b
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    static int CompareLists(List<int> a, List<int> b)
+    {
+        // no cards to check, it's a tie
+        if (a == null && b == null) return 0;
+
+        // If somehow player a does not have this list, make player b win
+        if (a == null) return 1;
+
+        // If somehow player b does not have this list, make player a win
+        if (b == null) return -1;
+
+        // Lists have to be the same size because players have the same combination
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i] > b[i]) return -1;
+            if (a[i] < b[i]) return 1;
+        }
+
+        // same values, it's a tie!
+        return 0;
+    }
     static bool CardsContainsCardWithValue(int value, List<Card> cards)
     {
         foreach (Card card in cards)
@@ -275,7 +341,7 @@ public class HandEvaluator
         // Make an Ace (14) count as BOTH 1 and 14, then remove all duplicates
         if (cardValues.Contains(14)) cardValues.Add(1);
 
-        cardValues.Distinct();
+        cardValues.Distinct().ToList();
 
         List<List<int>> possibleStraights = new();
 
@@ -399,233 +465,4 @@ public class HandEvaluator
         return valueCounts;
     }
     #endregion
-    /*
-    public class EvaluatedHand
-    {
-        public Combinations handRank;
-        public List<int> values; // tie-breakers (high cards etc)
-
-        public int CompareTo(EvaluatedHand other)
-        {
-            if (handRank != other.handRank)
-                return handRank.CompareTo(other.handRank);
-
-            for (int i = 0; i < values.Count; i++)
-            {
-                if (values[i] != other.values[i])
-                    return values[i].CompareTo(other.values[i]);
-            }
-
-            return 0;
-        }
-    }
-    public static int Compare(List<Player> players, Card[] board)
-    {
-        var hand1 = Evaluate(GetAllCards(players[0], board));
-        var hand2 = Evaluate(GetAllCards(players[1], board));
-
-        int result = hand1.CompareTo(hand2);
-
-        if (result > 0) return 1; // player 1 wins
-        if (result < 0) return 2; // player 2 wins
-
-        return -1; // tie
-    }
-    static int GetCardValue(Card card)
-    {
-        int value = (int)card.rank;
-
-        // Ace should be high (14)
-        if (value == 1)
-            return 14;
-
-        return value;
-    }
-    static List<Card> GetAllCards(Player player, Card[] board)
-    {
-        List<Card> cards = new List<Card>();
-        cards.AddRange(player.cards);
-        cards.AddRange(board);
-        return cards;
-    }
-    static Dictionary<int, int> GetValueCounts(List<Card> cards)
-    {
-        Dictionary<int, int> counts = new Dictionary<int, int>();
-
-        foreach (var card in cards)
-        {
-            int value = GetCardValue(card);
-
-            if (!counts.ContainsKey(value))
-                counts[value] = 0;
-
-            counts[value]++;
-        }
-
-        return counts;
-    }
-    static int GetStraightHigh(List<int> values)
-    {
-        values = values.Distinct().OrderBy(v => v).ToList();
-
-        // Handle Ace low (A=14 -> also 1)
-        if (values.Contains(14))
-            values.Insert(0, 1);
-
-        int consecutive = 1;
-
-        for (int i = 1; i < values.Count; i++)
-        {
-            if (values[i] == values[i - 1] + 1)
-            {
-                consecutive++;
-                if (consecutive >= 5)
-                    return values[i];
-            }
-            else
-            {
-                consecutive = 1;
-            }
-        }
-
-        return -1;
-    }
-    static List<Card> GetFlush(List<Card> cards)
-    {
-        // fancy :-)
-        return cards
-            .GroupBy(c => c.suit)
-            .Where(g => g.Count() >= 5)
-            .SelectMany(g => g)
-            .OrderByDescending(c => GetCardValue(c))
-            .Take(5)
-            .ToList();
-    }
-    static EvaluatedHand Evaluate(List<Card> cards)
-    {
-        var values = cards
-            .Select(c => GetCardValue(c))
-            .OrderByDescending(v => v)
-            .ToList();
-
-        var counts = GetValueCounts(cards);
-
-        var groups = counts
-            .OrderByDescending(kv => kv.Value)
-            .ThenByDescending(kv => kv.Key)
-            .ToList();
-
-        var flushCards = GetFlush(cards);
-        int straightHigh = GetStraightHigh(values);
-
-        // Straight Flush
-        if (flushCards != null && flushCards.Count >= 5)
-        {
-            int sfHigh = GetStraightHigh(
-                flushCards.Select(c => GetCardValue(c)).ToList()
-            );
-
-            if (sfHigh != -1)
-            {
-                return new EvaluatedHand
-                {
-                    handRank = Combinations.StraightFlush,
-                    values = new List<int> { sfHigh }
-                };
-            }
-        }
-
-        // Four of a Kind
-        if (groups[0].Value == 4)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.FourOfAKind,
-                values = new List<int> { groups[0].Key, groups[1].Key }
-            };
-        }
-
-        // Full House
-        if (groups[0].Value == 3 && groups[1].Value >= 2)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.FullHouse,
-                values = new List<int> { groups[0].Key, groups[1].Key }
-            };
-        }
-
-        // Flush
-        if (flushCards != null && flushCards.Count >= 5)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.Flush,
-                values = flushCards
-                    .Select(c => GetCardValue(c))
-                    .ToList()
-            };
-        }
-
-        // Straight
-        if (straightHigh != -1)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.Straight,
-                values = new List<int> { straightHigh }
-            };
-        }
-
-        // Three of a kind
-        if (groups[0].Value == 3)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.ThreeOfAKind,
-                values = new List<int> {
-                groups[0].Key,
-                groups[1].Key,
-                groups[2].Key
-            }
-            };
-        }
-
-        // Two pair
-        if (groups[0].Value == 2 && groups[1].Value == 2)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.TwoPair,
-                values = new List<int> {
-                groups[0].Key,
-                groups[1].Key,
-                groups[2].Key
-            }
-            };
-        }
-
-        // One pair
-        if (groups[0].Value == 2)
-        {
-            return new EvaluatedHand
-            {
-                handRank = Combinations.Pair,
-                values = new List<int> {
-                groups[0].Key,
-                groups[1].Key,
-                groups[2].Key,
-                groups[3].Key
-            }
-            };
-        }
-
-        // High card
-        return new EvaluatedHand
-        {
-            handRank = Combinations.HighCard,
-            values = values.Take(5).ToList()
-        };
-    }
-    */
 }

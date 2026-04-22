@@ -173,8 +173,16 @@ public class UIManager : MonoBehaviour
     }
     void EndRound(bool[] winners)
     {
+        Debug.Log(winners.Length);
+
         restartScreen.SetActive(true);
-        resultText.text = $"Player {winners[0]} wins!";
+        string text = "Winning Player(s): ";
+
+        for (int i = 0; i < winners.Length; i++)
+        {
+            if (winners[i]) text += $"|{i + 1}| ";
+        }
+        resultText.text = text;
     }
     void SetUpMoneyUI(int playerAmount, int startingMoney)
     {

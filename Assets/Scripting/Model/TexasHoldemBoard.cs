@@ -446,7 +446,7 @@ public class TexasHoldemBoard
             OnGameEnd.Invoke(winner);
         }
 
-        // Still multiple people with money in the game, send winning everyone player(s) information!
+        // Still multiple people with money in the game, send everyone winning player(s) information!
         else
         {
             roundRunning = false;

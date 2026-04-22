@@ -204,9 +204,8 @@ public class Client : MonoBehaviour
 		bool[] winners = new bool[6];
 		for (int i = 0; i < 5; i++)
 		{
-			bool winner = winners[i];
-			winner = message.ReadBool();
-		}
+			winners[i] = message.ReadBool();
+        }
 		OnRoundEnd?.Invoke(winners);
 	}
 	void GameEndRpc(OSCMessageIn message, IPEndPoint remote)
