@@ -39,7 +39,7 @@ public class HandEvaluator
 
         // Add all people with the best combination to a list
         List<int> winners = new();
-        foreach (var player in potentialWinners.Keys)
+        foreach (int player in potentialWinners.Keys)
         {
             if (potentialWinners[player].handRank == winningCombination) winners.Add(player);
         }
@@ -107,13 +107,13 @@ public class HandEvaluator
 
         // Create a list of all values in the hand from high to low
         List<int> values = GetValues(cards);
-        values.OrderByDescending(value => value).ToList();
+        values = values.OrderByDescending(value => value).ToList();
 
         // Create groups of cards with the same value (I.E. 2x king, 1x 8)
         Dictionary<int, int> valueCounts = GetValueCounts(values);
         List<KeyValuePair<int, int>> groups = valueCounts.ToList();
 
-        groups
+        groups = groups
             // Group with most amount of cards goes first
             .OrderByDescending(keyValue => keyValue.Value)
             // Within that order, groups of higher card values come first
@@ -341,7 +341,7 @@ public class HandEvaluator
         // Make an Ace (14) count as BOTH 1 and 14, then remove all duplicates
         if (cardValues.Contains(14)) cardValues.Add(1);
 
-        cardValues.Distinct().ToList();
+        cardValues = cardValues.Distinct().ToList();
 
         List<List<int>> possibleStraights = new();
 

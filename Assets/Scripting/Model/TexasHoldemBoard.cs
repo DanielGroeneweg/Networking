@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 public class TexasHoldemBoard
 {
     #region variables
+
+    #region Events
 
     public delegate void UpdatePotEvent(int potMoney);
     public event UpdatePotEvent OnUpdatePot;
@@ -45,6 +48,8 @@ public class TexasHoldemBoard
 
     public delegate void GameEndEvent(int winner);
     public event GameEndEvent OnGameEnd;
+
+    #endregion
 
     // The amount of players
     int _playerAmount;
@@ -145,7 +150,7 @@ public class TexasHoldemBoard
 
         if (playersStillIn == 1)
         {
-            EndRound(lastPlayerIndex + 1);
+            EndRound(new List<int> { lastPlayerIndex + 1 });
             return;
         }
 
@@ -353,6 +358,7 @@ public class TexasHoldemBoard
         {
             // Mark all-in players as already having taken an action
             player.tookAction = player.money == 0;
+            player.ResetBetMoney();
         }
 
         currentPhase++;
@@ -393,36 +399,30 @@ public class TexasHoldemBoard
     /// Additionally, also check if there is a winner for the entire game yet.
     /// </summary>
     /// <param name="winner"></param>
-    void EndRound(int winner)
+    void EndRound(List<int> winners)
     {
-        Logger.LogInfo($"round ended with winner: player {winner}");
+        string info = $"round ended with {winners.Count} winner(s): ";
+        foreach (int winner in winners) { info += $"|{winner}| "; }
+        Logger.LogInfo(info);
 
         List<int> winnersIDList = new();
 
         // Multiple winners (tied), add all winners to a list, then give them money
-        if (winner == -1)
+        if (winners.Count > 1)
         {
-            HashSet<Player> winners = new();
-            foreach (Player player in players)
+            foreach(int winner in winners)
             {
-                if (player.isInHand) winners.Add(player);
-            }
-
-            for (int i = 0; i < players.Count; i++)
-            {
-                if (winners.Contains(players[i]))
-                {
-                    winnersIDList.Add(i + 1);
-                    players[i].AddMoney(pot/winners.Count);
-                    OnUpdatePlayerMoney(i + 1, players[i].money);
-                }
+                winnersIDList.Add(winner);
+                players[winner - 1].AddMoney(pot / winners.Count);
+                OnUpdatePlayerMoney.Invoke(winner, players[winner - 1].money);
             }
         }
         
         // only 1 winner, give them the money!
         else
         {
-            winnersIDList.Add(winner);
+            int winner = winners[0];
+            winnersIDList.Add(winners[0]);
             players[winner - 1].AddMoney(pot);
             OnUpdatePlayerMoney(winner, players[winner - 1].money);
         }
@@ -432,10 +432,10 @@ public class TexasHoldemBoard
         OnUpdatePot?.Invoke(pot);
 
         // Get a list of all players who have not yet gone bankrupt
-        List<Player> playersInGame = new();
-        foreach(Player player in players)
+        List<int> playersInGame = new();
+        for (int i = 0; i < players.Count; i++)
         {
-            if (player.money > 0) playersInGame.Add(player);
+            if (players[i].money > 0) playersInGame.Add(i);
         }
 
         // only 1 player with money remains, game ended with a winner!
@@ -443,7 +443,7 @@ public class TexasHoldemBoard
         {
             roundRunning = false;
             gameRunning = false;
-            OnGameEnd.Invoke(winner);
+            OnGameEnd.Invoke(playersInGame[0] + 1);
         }
 
         // Still multiple people with money in the game, send everyone winning player(s) information!
@@ -456,8 +456,7 @@ public class TexasHoldemBoard
     }
     void DetermineWinner()
     {
-        int winner = HandEvaluator.GetWinners(players, cardsOnBoard)[0];
-        EndRound(winner);
+        ResolveSidePots();
     }
     /// <summary>
     /// Starts a new game. It creates a player class for each player and grants them the starting money amount.
@@ -514,6 +513,8 @@ public class TexasHoldemBoard
             {
                 player.isInHand = true;
                 player.tookAction = false;
+                player.ResetBetMoney();
+                player.ResetTotalBetMoney();
             }
             else
                 player.isInHand = false;
@@ -544,6 +545,150 @@ public class TexasHoldemBoard
         NextTurn(BettingActions.None);
 
         OnNewRound.Invoke();
+    }
+    /// <summary>
+    /// Returns a list of sidePots containing the amount of money for that pot and the players (their id's) eligible for that pot.
+    /// </summary>
+    /// <returns></returns>
+    List<SidePot> BuildSidePots()
+    {
+        List<SidePot> pots = new();
+
+        // Create a list of all active players, then order it so the player with the lowest bid comes first
+        List<PlayerContribution> active = new();
+        for(int i = 0; i < players.Count; i++)
+        {
+            Player player = players[i];
+            if (player.totalBetMoney > 0) active.Add(new PlayerContribution() { player = player, id = i + 1});
+        }
+        active = active.OrderBy(p => p.player.totalBetMoney).ToList();
+
+        // Go through all active players
+        int previous = 0;
+
+        for (int i = 0; i < active.Count; i++)
+        {
+            // Get the difference in bet money between this and previous player
+            int current = active[i].player.totalBetMoney;
+            int diff = current - previous;
+
+            // if there is no difference, bets match, no need to make a new sidepot
+            if (diff <= 0) continue;
+
+            // if there is a difference, create a sidepot eligible for the current and following players in the list
+            SidePot sidePot = new();
+
+            for (int j = i; j < active.Count; j++)
+            {
+                sidePot.money += diff;
+                sidePot.eligiblePlayers.Add(active[j].id);
+            }
+
+            pots.Add(sidePot);
+            previous = current;
+        }
+
+        return pots;
+    }
+    void ResolveSidePots()
+    {
+        List<SidePot> sidePots = BuildSidePots();
+
+        // A list of player IDs and how much money they won
+        Dictionary<int, int> winnings = new();
+
+        // Go through each sidepot
+        foreach (SidePot pot in sidePots)
+        {
+            // Get eligible & active players
+            List<Player> eligiblePlayers = new();
+
+            foreach (int id in pot.eligiblePlayers)
+            {
+                if (players[id - 1].isInHand)
+                {
+                    eligiblePlayers.Add(players[id - 1]);
+                }
+            }
+
+            if (eligiblePlayers.Count == 0) continue;
+
+            // Get a list of eligible players (both in the pot AND not folded)
+            List<PlayerContribution> subset = new();
+            for (int i = 0; i < players.Count; i++)
+            {
+                Player player = players[i];
+                if (pot.eligiblePlayers.Contains(i + 1) && players[i].isInHand) subset.Add(new PlayerContribution() { player = player, id = i + 1 });
+            }
+
+            // Use LinQ to find the Player variable in the list of eligible players
+            List<Player> subsetPlayers = subset.Select(x => x.player).ToList();
+            List<int> winnerIndexes = HandEvaluator.GetWinners(subsetPlayers, cardsOnBoard);
+
+            // Map back to real player IDs
+            List<int> winners = winnerIndexes.Select(i => subset[i - 1].id).ToList();
+
+            // If there is no winner in this pot, skip (something most likely went wrong)
+            if (winners.Count == 0) continue;
+
+            // Calculate player payout(s) for this pot
+            int split = pot.money / winners.Count;
+            int remainder = pot.money % winners.Count;
+
+            // Give equal split first
+            foreach (int id in winners)
+            {
+                if (!winnings.ContainsKey(id))
+                    winnings[id] = 0;
+
+                winnings[id] += split;
+            }
+
+            // Distribute remainder (odd chips)
+            for (int i = 0; i < remainder; i++)
+            {
+                int id = winners[i]; // simple rule: first winners get the extra chip
+
+                if (!winnings.ContainsKey(id))
+                    winnings[id] = 0;
+
+                winnings[id] += 1;
+            }
+        }
+
+        // Pay players
+        foreach (KeyValuePair<int, int> kvp in winnings)
+        {
+            players[kvp.Key - 1].AddMoney(kvp.Value);
+            OnUpdatePlayerMoney?.Invoke(kvp.Key, players[kvp.Key - 1].money);
+        }
+
+        // Reset Pot
+        pot = 0;
+        OnUpdatePot?.Invoke(pot);
+
+        // Get a list of all players who have not yet gone bankrupt
+        List<int> playersInGame = new();
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (players[i].money > 0) playersInGame.Add(i);
+        }
+
+        // only 1 player with money remains, game ended with a winner!
+        if (playersInGame.Count == 1)
+        {
+            roundRunning = false;
+            gameRunning = false;
+            OnGameEnd.Invoke(playersInGame[0] + 1);
+        }
+
+        // Still multiple people with money in the game, send everyone winning player(s) information!
+        else
+        {
+            roundRunning = false;
+
+            OnRoundEnd.Invoke(winnings.Keys.ToList());
+        }
     }
     #endregion
 }

@@ -1,10 +1,12 @@
 using UnityEngine;
-using UnityEngine.Rendering.LookDev;
 public class Player
 {
     public int money {  get; private set; }
     public Card[] cards { get; private set; }
+    // Used for tracking betting phases
     public int betMoney { get; private set; }
+    // Used for tracking entire rounds
+    public int totalBetMoney { get; private set; }
 
     public bool isInHand = true;
     public bool tookAction = false;
@@ -40,5 +42,8 @@ public class Player
     {
         money -= Mathf.Abs(value);
         betMoney += Mathf.Abs(value);
+        totalBetMoney += Mathf.Abs(value);
     }
+    public void ResetBetMoney() { betMoney = 0; }
+    public void ResetTotalBetMoney() {  totalBetMoney = 0; }
 }
