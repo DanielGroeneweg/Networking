@@ -114,6 +114,7 @@ public class Server : MonoBehaviour
         board.OnPlayerInformation += PlayerInformationRpc;
         board.OnRoundEnd += EndRoundRpc;
         board.OnGameEnd += GameEndRpc;
+        board.OnPlayerCardInfo += PlayerCardInfo;
 		
         //(Note: no unsubscribe needed in OnDestroy, since the server owns the private board variable.)
 
@@ -197,7 +198,7 @@ public class Server : MonoBehaviour
             if (conn.Remote.Equals(remote))
             {
                 Debug.Log("This client is a player - allowed to make moves");
-                board.Bet(playerIDs[conn], money);
+                board.Raise(playerIDs[conn], money);
             }
         }
     }
@@ -395,5 +396,10 @@ public class Server : MonoBehaviour
 			conn.Send(packet);
 		}
 	}
+    void PlayerCardInfo(string data)
+    {
+        OSCMessageOut message = new OSCMessageOut("/PlayerCardInfo").AddString(data);
+        Broadcast(message.GetBytes());
+    }
     #endregion
 }

@@ -354,7 +354,10 @@ public class HandEvaluator
             cardsInStraight.Add(cardValues[card]);
 
             // Skip if there are not enough cards to make a straight with
-            if (card - cardValues.Count < 5) break;
+            if (cardValues.Count - card < 5)
+            {
+                break;
+            }
 
             // Loop through all values in the potential hand, if 5 cards are 'descendant' of the previous, there is a straight.
             for (int i = card + 1; i < cardValues.Count; i++)
@@ -370,7 +373,6 @@ public class HandEvaluator
                         possibleStraights.Add(cardsInStraight);
                         break;
                     }
-                    ;
                 }
 
                 // If the value is not 1 less than the last found value,

@@ -173,8 +173,6 @@ public class UIManager : MonoBehaviour
     }
     void EndRound(bool[] winners)
     {
-        Debug.Log(winners.Length);
-
         restartScreen.SetActive(true);
         string text = "Winning Player(s): ";
 

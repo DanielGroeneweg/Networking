@@ -49,6 +49,9 @@ public class TexasHoldemBoard
     public delegate void GameEndEvent(int winner);
     public event GameEndEvent OnGameEnd;
 
+    public delegate void PlayerCardInfoEvent(string data);
+    public event PlayerCardInfoEvent OnPlayerCardInfo;
+
     #endregion
 
     // The amount of players
@@ -359,6 +362,7 @@ public class TexasHoldemBoard
             // Mark all-in players as already having taken an action
             player.tookAction = player.money == 0;
             player.ResetBetMoney();
+            betToBeMatched = 0;
         }
 
         currentPhase++;
@@ -416,6 +420,7 @@ public class TexasHoldemBoard
                 players[winner - 1].AddMoney(pot / winners.Count);
                 OnUpdatePlayerMoney.Invoke(winner, players[winner - 1].money);
             }
+            SendPlayerCardsInfo();
         }
         
         // only 1 winner, give them the money!
@@ -453,6 +458,24 @@ public class TexasHoldemBoard
 
             OnRoundEnd.Invoke(winnersIDList);
         }
+    }
+    /// <summary>
+    /// Serializes all players' cards who did not fold in the round, then sends it to the server to display in the view
+    /// </summary>
+    void SendPlayerCardsInfo()
+    {
+        List<Player> playerList = new();
+
+        foreach (Player player in players)
+        {
+            if (player.isInHand) playerList.Add(player);
+        }
+
+        PlayerCardInfo info = new PlayerCardInfo();
+        Dictionary<int, Player> playerDic = new();
+
+        string json = info.GetJSON(playerDic);
+        OnPlayerCardInfo.Invoke(json);
     }
     void DetermineWinner()
     {
