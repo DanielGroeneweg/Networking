@@ -68,6 +68,9 @@ public class Client : MonoBehaviour
 
 	public delegate void PlayerCardInformationEvent(PlayerCardInfo info);
 	public event PlayerCardInformationEvent OnPlayerCardInformation;
+
+	public delegate void JoinedAsSpectatorEvent();
+	public event JoinedAsSpectatorEvent OnJoinedAsSpectator;
     #endregion
 	void Start()
 	{
@@ -123,6 +126,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
 		dispatcher.AddListener("/SendHostInformation", SendHostInformationRpc);
 		dispatcher.AddListener("/PlayerCardInfo", PlayerCardInformationRpc, OSCUtil.STRING);
+		dispatcher.AddListener("/Spectator", JoinedAsSpectatorRpc);
 	}
 
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
@@ -229,6 +233,10 @@ public class Client : MonoBehaviour
 		string json = message.ReadString();
 		PlayerCardInfo info = JsonUtility.FromJson<PlayerCardInfo>(json);
 		OnPlayerCardInformation?.Invoke(info);
+	}
+	void JoinedAsSpectatorRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnJoinedAsSpectator?.Invoke();
 	}
     #endregion
 
