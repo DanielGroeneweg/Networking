@@ -1,10 +1,11 @@
-using UnityEngine;
+using NetworkConnections;
+using Newtonsoft.Json;
+using OSCTools;
+using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using NetworkConnections;
-using OSCTools;
-using System.Collections.Generic;
-using System.Collections;
+using UnityEngine;
 /// <summary>
 /// The client is the class that lets game code (Controller and View classes) communicate with 
 /// the server, and handles network connections.
@@ -231,8 +232,9 @@ public class Client : MonoBehaviour
 	void PlayerCardInformationRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		string json = message.ReadString();
-		PlayerCardInfo info = JsonUtility.FromJson<PlayerCardInfo>(json);
-		OnPlayerCardInformation?.Invoke(info);
+        PlayerCardInfo info =
+			JsonConvert.DeserializeObject<PlayerCardInfo>(json);
+        OnPlayerCardInformation?.Invoke(info);
 	}
 	void JoinedAsSpectatorRpc(OSCMessageIn message, IPEndPoint remote)
 	{

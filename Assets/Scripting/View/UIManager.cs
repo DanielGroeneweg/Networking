@@ -26,6 +26,10 @@ public class UIManager : MonoBehaviour
     PlayerCardInfoShower playerCardInfoPrefab;
     [SerializeField]
     GameObject playerCardInfoParent;
+    [SerializeField]
+    BoardCardShower boardShowerPrefab;
+    [SerializeField]
+    GameObject boardCardParent;
 
     [Header("Player")]
     [SerializeField]
@@ -201,6 +205,15 @@ public class UIManager : MonoBehaviour
     {
         foreach (PlayerCardCombo combo in info.players)
         {
+            // Board is registered on -1
+            if (combo.player == -1)
+            {
+                BoardCardShower boardshower = Instantiate(boardShowerPrefab, boardCardParent.transform);
+                boardshower.transform.localPosition = Vector3.zero;
+                boardshower.Display(combo.cards);
+                continue;
+            }
+
             PlayerCardInfoShower shower = Instantiate(playerCardInfoPrefab, playerCardInfoParent.transform);
             shower.transform.localPosition = Vector3.zero;
             shower.Display(combo);
