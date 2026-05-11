@@ -4,8 +4,7 @@ using System.Net.Sockets;
 using NetworkConnections;
 using OSCTools;
 using System.Collections.Generic;
-using Unity.VisualScripting;
-using System;
+using System.Collections;
 /// <summary>
 /// The client is the class that lets game code (Controller and View classes) communicate with 
 /// the server, and handles network connections.
@@ -13,7 +12,9 @@ using System;
 public class Client : MonoBehaviour
 {
 	// ----- General client things:
+	public string serverIP;
 	public IPAddress ServerIP = IPAddress.Loopback;
+	int serverPort = 58752;
 	TcpNetworkConnection connection;
 	OSCDispatcher dispatcher;
 
@@ -64,21 +65,26 @@ public class Client : MonoBehaviour
 
 	public delegate void SendHostInformationEvent();
 	public event SendHostInformationEvent OnSendHostInformation;
+
+	public delegate void PlayerCardInformationEvent(PlayerCardInfo info);
+	public event PlayerCardInformationEvent OnPlayerCardInformation;
     #endregion
-    void Start()
+	void Start()
 	{
-		TcpClient client = new TcpClient();
-		client.Connect(new IPEndPoint(ServerIP, 50006));
-		connection = new TcpNetworkConnection(client);
-		// TODO: error handling
+        ServerIP = Dns.GetHostAddresses(serverIP)[0];
 
-		Debug.Log("Starting client, connecting to " + ServerIP);
+        TcpClient client = new TcpClient();
+        client.Connect(new IPEndPoint(ServerIP, serverPort));
+        connection = new TcpNetworkConnection(client);
+        // TODO: error handling
 
-		// Initialize the dispatcher and callbacks for incoming OSC messages:
-		dispatcher = new OSCDispatcher();
-		dispatcher.ShowIncomingMessages = true;
-		Initialize();
-	}
+        Debug.Log("Starting client, connecting to " + ServerIP);
+
+        // Initialize the dispatcher and callbacks for incoming OSC messages:
+        dispatcher = new OSCDispatcher();
+        dispatcher.ShowIncomingMessages = true;
+        Initialize();
+    }
 
 	/// <summary>
 	/// Called from NetworkConnection callback (connection.Update), when a packet arrives:
@@ -116,6 +122,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/RoundEnd", RoundEndRpc, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL);
 		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
 		dispatcher.AddListener("/SendHostInformation", SendHostInformationRpc);
+		dispatcher.AddListener("/PlayerCardInfo", PlayerCardInformationRpc, OSCUtil.STRING);
 	}
 
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
@@ -216,6 +223,12 @@ public class Client : MonoBehaviour
 	void SendHostInformationRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		OnSendHostInformation?.Invoke();
+	}
+	void PlayerCardInformationRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		string json = message.ReadString();
+		PlayerCardInfo info = JsonUtility.FromJson<PlayerCardInfo>(json);
+		OnPlayerCardInformation?.Invoke(info);
 	}
     #endregion
 

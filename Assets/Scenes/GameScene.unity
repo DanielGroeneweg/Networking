@@ -1976,7 +1976,6 @@ GameObject:
   m_Component:
   - component: {fileID: 694269795}
   - component: {fileID: 694269798}
-  - component: {fileID: 694269797}
   - component: {fileID: 694269796}
   m_Layer: 0
   m_Name: NetworkManager
@@ -2012,18 +2011,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 651f71330bddebc49b0241636c06f87f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Client
---- !u!114 &694269797
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 694269794}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b60e9a5beaa8e924085ec7f26a24cbe1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Server
+  serverIP: viaduct.proxy.rlwy.net
 --- !u!114 &694269798
 MonoBehaviour:
   m_ObjectHideFlags: 0
