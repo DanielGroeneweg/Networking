@@ -1,3 +1,4 @@
+using UnityEditor.Analytics;
 using UnityEngine;
 
 /// <summary>
@@ -19,11 +20,29 @@ public class SessionManager : MonoBehaviour {
 	}
 
 	void StartButtons() {
+		/*
+		if (GUILayout.Button("Server")) {
+			StartServer();
+		}
+		*/
+
 		if (GUILayout.Button("Client")) {
 			StartClient();
 		}
 	}
-	void StartClient() {
+    void StartServer()
+    {
+        Debug.Log("Starting server: creating board");
+
+        Server server = GetComponent<Server>();
+        server.enabled = true;
+
+        //var boardOwner = FindFirstObjectByType<ModelOwner>();
+        //boardOwner.enabled = true;
+
+        IsServer = true;
+    }
+    void StartClient() {
 		Debug.Log($"Starting client: enabling controller");
 
 		Client client = GetComponent<Client>();

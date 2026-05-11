@@ -22,6 +22,10 @@ public class UIManager : MonoBehaviour
     GameObject moneyParent;
     [SerializeField]
     TMP_Text pot;
+    [SerializeField]
+    PlayerCardInfoShower playerCardInfoPrefab;
+    [SerializeField]
+    GameObject playerCardInfoParent;
 
     [Header("Player")]
     [SerializeField]
@@ -43,6 +47,11 @@ public class UIManager : MonoBehaviour
     [Header("Other")]
     [SerializeField] UnityEvent onRoundStart;
     Client client;
+
+    [Header("Events")]
+    [SerializeField] UnityEvent onSpectator;
+
+    List<PlayerCardInfoShower> playerCardPresenters = new();
     void Start()
     {
         client = FindFirstObjectByType<Client>();
@@ -60,6 +69,9 @@ public class UIManager : MonoBehaviour
             client.OnGameEnd += GameOver;
             client.OnRoundEnd += EndRound;
             client.OnNewRound += NewRoundStart;
+            client.OnNewRound += ClearCards;
+            client.OnJoinedAsSpectator += onSpectator.Invoke;
+            client.OnPlayerCardInformation += ShowPlayerCards;
         }
     }
     private void OnDestroy()
@@ -78,6 +90,9 @@ public class UIManager : MonoBehaviour
             client.OnGameEnd -= GameOver;
             client.OnRoundEnd -= EndRound;
             client.OnNewRound -= NewRoundStart;
+            client.OnNewRound += ClearCards;
+            client.OnJoinedAsSpectator -= onSpectator.Invoke;
+            client.OnPlayerCardInformation -= ShowPlayerCards;
         }
     }
     void NewRoundStart()
@@ -182,6 +197,15 @@ public class UIManager : MonoBehaviour
         }
         resultText.text = text;
     }
+    void ShowPlayerCards(PlayerCardInfo info)
+    {
+        foreach (PlayerCardCombo combo in info.players)
+        {
+            PlayerCardInfoShower shower = Instantiate(playerCardInfoPrefab, playerCardInfoParent.transform);
+            shower.transform.localPosition = Vector3.zero;
+            shower.Display(combo);
+        }
+    }
     void SetUpMoneyUI(int playerAmount, int startingMoney)
     {
         for (int i = 1; i <= playerAmount; i++)
@@ -190,5 +214,14 @@ public class UIManager : MonoBehaviour
             playerText.text = $"Player {i}: ${startingMoney}";
             moneyDisplayers.Add(playerText);
         }
+    }
+    public void ClearCards()
+    {
+        for(int i = playerCardPresenters.Count - 1; i >= 0; i--)
+        {
+            PlayerCardInfoShower shower = playerCardPresenters[i];
+        }
+
+        playerCardPresenters.Clear();
     }
 }
