@@ -56,6 +56,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] UnityEvent onSpectator;
 
     List<PlayerCardInfoShower> playerCardPresenters = new();
+    List<BoardCardShower> boardPresenters = new();
     void Start()
     {
         client = FindFirstObjectByType<Client>();
@@ -104,6 +105,9 @@ public class UIManager : MonoBehaviour
         onRoundStart?.Invoke();
     }
     void EnableHostLobbyPanel() { hostPanel.SetActive(true); }
+    /// <summary>
+    /// Fires an event that enables all buttons for the host to start games and rounds.
+    /// </summary>
     void EnableHostButtons() { enableHostButtons?.Invoke(); }
     void DisableHostLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
@@ -124,6 +128,11 @@ public class UIManager : MonoBehaviour
         Debug.Log("Active player: " + player);
         activePlayerText.text = $"active player: Player {player}";
     }
+    /// <summary>
+    /// Enables and disables action buttons that allow players to take actions.
+    /// </summary>
+    /// <param name="chosenAction"></param>
+    /// <param name="pot"></param>
     void MyTurn(int chosenAction, int pot)
     {
         List<Button> all = new List<Button>();
@@ -164,7 +173,7 @@ public class UIManager : MonoBehaviour
                 Debug.LogError("Action is set to fold, should not be possible though!");
                 break;
 
-            // None will only be sent at the start of a round/phase
+            // None will only be sent at the start of a new round/phase when no betting action has been taken yet.
             case BettingActions.None:
                 allowed.Add(betButton);
                 allowed.Add(foldButton);
@@ -190,6 +199,10 @@ public class UIManager : MonoBehaviour
         card1.PresentCard(firstCard);
         card2.PresentCard(secondCard);
     }
+    /// <summary>
+    /// Enables the post-round screen and displays all players that won.
+    /// </summary>
+    /// <param name="winners"></param>
     void EndRound(bool[] winners)
     {
         restartScreen.SetActive(true);
@@ -201,6 +214,10 @@ public class UIManager : MonoBehaviour
         }
         resultText.text = text;
     }
+    /// <summary>
+    /// shows the cards on the board and each player that didn't fold in the post-round screen.
+    /// </summary>
+    /// <param name="info"></param>
     void ShowPlayerCards(PlayerCardInfo info)
     {
         foreach (PlayerCardCombo combo in info.players)
@@ -211,14 +228,21 @@ public class UIManager : MonoBehaviour
                 BoardCardShower boardshower = Instantiate(boardShowerPrefab, boardCardParent.transform);
                 boardshower.transform.localPosition = Vector3.zero;
                 boardshower.Display(combo.cards);
+                boardPresenters.Add(boardshower);
                 continue;
             }
 
             PlayerCardInfoShower shower = Instantiate(playerCardInfoPrefab, playerCardInfoParent.transform);
             shower.transform.localPosition = Vector3.zero;
             shower.Display(combo);
+            playerCardPresenters.Add(shower);
         }
     }
+    /// <summary>
+    /// Create a tab for each player to display their money.
+    /// </summary>
+    /// <param name="playerAmount"></param>
+    /// <param name="startingMoney"></param>
     void SetUpMoneyUI(int playerAmount, int startingMoney)
     {
         for (int i = 1; i <= playerAmount; i++)
@@ -228,13 +252,24 @@ public class UIManager : MonoBehaviour
             moneyDisplayers.Add(playerText);
         }
     }
-    public void ClearCards()
+    /// <summary>
+    /// Clears the cards in the post-round screen that displays winners and their cards
+    /// </summary>
+    void ClearCards()
     {
         for(int i = playerCardPresenters.Count - 1; i >= 0; i--)
         {
             PlayerCardInfoShower shower = playerCardPresenters[i];
+            Destroy(shower.gameObject);
+        }
+
+        for (int i = boardPresenters.Count - 1; i >= 0; i--)
+        {
+            BoardCardShower shower = boardPresenters[i];
+            Destroy(shower.gameObject);
         }
 
         playerCardPresenters.Clear();
+        boardPresenters.Clear();
     }
 }
