@@ -36,6 +36,8 @@ public class UIManager : MonoBehaviour
     CardPresenter card1;
     [SerializeField]
     CardPresenter card2;
+    [SerializeField]
+    TMP_Text playerIDLabel;
 
     [Header("Actions")]
     [SerializeField] Button checkButton;
@@ -51,6 +53,8 @@ public class UIManager : MonoBehaviour
     [Header("Other")]
     [SerializeField] UnityEvent onRoundStart;
     Client client;
+    [SerializeField]
+    TMP_Text panelPlayerIDLabel;
 
     [Header("Events")]
     [SerializeField] UnityEvent onSpectator;
@@ -67,9 +71,9 @@ public class UIManager : MonoBehaviour
             client.OnUpdatePot += PresentPotMoney;
             client.OnDealCards += PresentCards;
             client.OnUpdatePlayerMoney += PresentPlayerMoney;
-            client.OnSendHostInformation += EnableHostLobbyPanel;
+            client.OnPlayerID += EnableLobbyPanel;
             client.OnSendHostInformation += EnableHostButtons;
-            client.OnPlayerInformation += DisableHostLobbyPanel;
+            client.OnPlayerInformation += DisableLobbyPanel;
             client.OnPlayerInformation += SetUpMoneyUI;
             client.OnGameEnd += GameOver;
             client.OnRoundEnd += EndRound;
@@ -77,6 +81,7 @@ public class UIManager : MonoBehaviour
             client.OnNewRound += ClearCards;
             client.OnJoinedAsSpectator += onSpectator.Invoke;
             client.OnPlayerCardInformation += ShowPlayerCards;
+            client.OnPlayerID += ShowPlayerID;
         }
     }
     private void OnDestroy()
@@ -88,9 +93,9 @@ public class UIManager : MonoBehaviour
             client.OnUpdatePot -= PresentPotMoney;
             client.OnDealCards -= PresentCards;
             client.OnUpdatePlayerMoney -= PresentPlayerMoney;
-            client.OnSendHostInformation -= EnableHostLobbyPanel;
+            client.OnPlayerID -= EnableLobbyPanel;
             client.OnSendHostInformation -= EnableHostButtons;
-            client.OnPlayerInformation -= DisableHostLobbyPanel;
+            client.OnPlayerInformation -= DisableLobbyPanel;
             client.OnPlayerInformation -= SetUpMoneyUI;
             client.OnGameEnd -= GameOver;
             client.OnRoundEnd -= EndRound;
@@ -98,18 +103,19 @@ public class UIManager : MonoBehaviour
             client.OnNewRound += ClearCards;
             client.OnJoinedAsSpectator -= onSpectator.Invoke;
             client.OnPlayerCardInformation -= ShowPlayerCards;
+            client.OnPlayerID -= ShowPlayerID;
         }
     }
     void NewRoundStart()
     {
         onRoundStart?.Invoke();
     }
-    void EnableHostLobbyPanel() { hostPanel.SetActive(true); }
+    void EnableLobbyPanel(int id) { hostPanel.SetActive(true); }
     /// <summary>
     /// Fires an event that enables all buttons for the host to start games and rounds.
     /// </summary>
     void EnableHostButtons() { enableHostButtons?.Invoke(); }
-    void DisableHostLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
+    void DisableLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
     {
         switch (winner)
@@ -271,5 +277,10 @@ public class UIManager : MonoBehaviour
 
         playerCardPresenters.Clear();
         boardPresenters.Clear();
+    }
+    void ShowPlayerID(int id)
+    {
+        panelPlayerIDLabel.text = $"You are Player {id}";
+        playerIDLabel.text = $"You are Player {id}";
     }
 }
