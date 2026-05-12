@@ -75,6 +75,9 @@ public class Client : MonoBehaviour
 
 	public delegate void PlayerIDEvent(int id);
 	public event PlayerIDEvent OnPlayerID;
+
+	public delegate void KickPlayerEvent();
+	public event KickPlayerEvent onKickPlayer;
     #endregion
 	void Start()
 	{
@@ -132,6 +135,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/PlayerCardInfo", PlayerCardInformationRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/Spectator", JoinedAsSpectatorRpc);
 		dispatcher.AddListener("/PlayerID", PlayerIDRpc, OSCUtil.INT);
+		dispatcher.AddListener("/KickPlayer", KickPlayerRpc);
 	}
 
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
@@ -248,6 +252,10 @@ public class Client : MonoBehaviour
 	{
 		int id = message.ReadInt();
 		OnPlayerID?.Invoke(id);
+	}
+	void KickPlayerRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		onKickPlayer?.Invoke();
 	}
     #endregion
 
