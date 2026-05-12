@@ -18,6 +18,7 @@ public class Client : MonoBehaviour
 	int serverPort = 58752;
 	TcpNetworkConnection connection;
 	OSCDispatcher dispatcher;
+	bool connectionMade;
 
     // ----- TexasHoldem client things:
     #region Events
@@ -107,11 +108,14 @@ public class Client : MonoBehaviour
 
 	void Update()
 	{
+		if (!connectionMade) return;
 		// Check for incoming packets, and deal with them:
 		while (connection.Available() > 0) {
 			HandlePacket(connection.GetPacket(), connection.Remote);
 		}
+		
 		// TODO: disconnect handling
+		//onKickPlayer.Invoke();
 	}
 
 	void Initialize() {
@@ -136,6 +140,8 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/Spectator", JoinedAsSpectatorRpc);
 		dispatcher.AddListener("/PlayerID", PlayerIDRpc, OSCUtil.INT);
 		dispatcher.AddListener("/KickPlayer", KickPlayerRpc);
+		
+		connectionMade = true;
 	}
 
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
