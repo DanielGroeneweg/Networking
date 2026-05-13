@@ -61,6 +61,7 @@ public class UIManager : MonoBehaviour
 
     List<PlayerCardInfoShower> playerCardPresenters = new();
     List<BoardCardShower> boardPresenters = new();
+    int myID;
     void Start()
     {
         client = FindFirstObjectByType<Client>();
@@ -133,6 +134,7 @@ public class UIManager : MonoBehaviour
     {
         Debug.Log("Active player: " + player);
         activePlayerText.text = $"active player: Player {player}";
+        activePlayerText.color = player == myID ? Color.white : Color.red;
     }
     /// <summary>
     /// Enables and disables action buttons that allow players to take actions.
@@ -280,6 +282,7 @@ public class UIManager : MonoBehaviour
     }
     void ShowPlayerID(int id)
     {
+        myID = id;
         panelPlayerIDLabel.text = $"You are Player {id}";
         playerIDLabel.text = $"You are Player {id}";
     }
