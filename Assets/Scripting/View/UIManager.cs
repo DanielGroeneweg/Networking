@@ -11,6 +11,10 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     TMP_Text gameOverText;
     [SerializeField]
+    Image endRoundPanel;
+    [SerializeField]
+    Image gameOverPanel;
+    [SerializeField]
     GameObject restartScreen;
     [SerializeField]
     TMP_Text resultText;
@@ -119,12 +123,8 @@ public class UIManager : MonoBehaviour
     void DisableLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
     {
-        switch (winner)
-        {
-            case 1: gameOverText.text = "player wins!"; break;
-            case 2: gameOverText.text = "CPU wins!"; break;
-            default: gameOverText.text = "it's a draw"; break;
-        }
+        gameOverText.text = $"player {winner} wins!";
+        gameOverPanel.gameObject.SetActive(true);
     }
     void PresentPotMoney(int pot)
     {
@@ -259,6 +259,9 @@ public class UIManager : MonoBehaviour
             playerText.text = $"Player {i}: ${startingMoney}";
             moneyDisplayers.Add(playerText);
         }
+
+        gameOverPanel.gameObject.SetActive(false);
+        endRoundPanel.gameObject.SetActive(false);
     }
     /// <summary>
     /// Clears the cards in the post-round screen that displays winners and their cards
