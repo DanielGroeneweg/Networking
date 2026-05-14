@@ -79,8 +79,11 @@ public class Client : MonoBehaviour
 
 	public delegate void KickPlayerEvent();
 	public event KickPlayerEvent onKickPlayer;
+
+    public delegate void ValidPlayerActionEvent(int player, int action);
+    public event ValidPlayerActionEvent OnValidPlayerAction;
     #endregion
-	void Start()
+    void Start()
 	{
         ServerIP = Dns.GetHostAddresses(serverIP)[0];
 
@@ -140,6 +143,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/Spectator", JoinedAsSpectatorRpc);
 		dispatcher.AddListener("/PlayerID", PlayerIDRpc, OSCUtil.INT);
 		dispatcher.AddListener("/KickPlayer", KickPlayerRpc);
+		dispatcher.AddListener("/ValidPlayerAction", ValidPlayerActionRpc, OSCUtil.INT, OSCUtil.INT);
 		
 		connectionMade = true;
 	}
@@ -262,6 +266,12 @@ public class Client : MonoBehaviour
 	void KickPlayerRpc(OSCMessageIn message, IPEndPoint remote)
 	{
 		onKickPlayer?.Invoke();
+	}
+	void ValidPlayerActionRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		int player = message.ReadInt();
+		int action = message.ReadInt();
+		OnValidPlayerAction?.Invoke(player, action);
 	}
     #endregion
 

@@ -19,9 +19,7 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     TMP_Text resultText;
     [SerializeField]
-    List<TMP_Text> moneyDisplayers = new();
-    [SerializeField]
-    TMP_Text displayPrefab;
+    PlayerMoneyAction playerMoneyDisplayerPrefab;
     [SerializeField]
     GameObject moneyParent;
     [SerializeField]
@@ -34,6 +32,8 @@ public class UIManager : MonoBehaviour
     BoardCardShower boardShowerPrefab;
     [SerializeField]
     GameObject boardCardParent;
+    [SerializeField]
+    TMP_Text phaseText;
 
     [Header("Player")]
     [SerializeField]
@@ -65,6 +65,7 @@ public class UIManager : MonoBehaviour
 
     List<PlayerCardInfoShower> playerCardPresenters = new();
     List<BoardCardShower> boardPresenters = new();
+    List<PlayerMoneyAction> moneyDisplayers = new();
     int myID;
     void Start()
     {
@@ -87,6 +88,8 @@ public class UIManager : MonoBehaviour
             client.OnJoinedAsSpectator += onSpectator.Invoke;
             client.OnPlayerCardInformation += ShowPlayerCards;
             client.OnPlayerID += ShowPlayerID;
+            client.OnNextPhase += NextPhase;
+            client.OnValidPlayerAction += ValidPlayerAction;
         }
     }
     private void OnDestroy()
@@ -109,6 +112,8 @@ public class UIManager : MonoBehaviour
             client.OnJoinedAsSpectator -= onSpectator.Invoke;
             client.OnPlayerCardInformation -= ShowPlayerCards;
             client.OnPlayerID -= ShowPlayerID;
+            client.OnNextPhase -= NextPhase;
+            client.OnValidPlayerAction -= ValidPlayerAction;
         }
     }
     void NewRoundStart()
@@ -197,7 +202,7 @@ public class UIManager : MonoBehaviour
     }
     void PresentPlayerMoney(int player, int money)
     {
-        moneyDisplayers[player - 1].text = $"Player {player}: ${money}";
+        moneyDisplayers[player - 1].moneyText.text = $"Player {player}: ${money}";
     }
     void PresentCards(int card1Rank, int card1Suit, int card2Rank, int card2Suit)
     {
@@ -255,8 +260,8 @@ public class UIManager : MonoBehaviour
     {
         for (int i = 1; i <= playerAmount; i++)
         {
-            TMP_Text playerText = Instantiate(displayPrefab, Vector3.zero, Quaternion.identity, moneyParent.transform);
-            playerText.text = $"Player {i}: ${startingMoney}";
+            PlayerMoneyAction playerText = Instantiate(playerMoneyDisplayerPrefab, Vector3.zero, Quaternion.identity, moneyParent.transform);
+            playerText.moneyText.text = $"Player {i}: ${startingMoney}";
             moneyDisplayers.Add(playerText);
         }
 
@@ -288,5 +293,19 @@ public class UIManager : MonoBehaviour
         myID = id;
         panelPlayerIDLabel.text = $"You are Player {id}";
         playerIDLabel.text = $"You are Player {id}";
+    }
+    void NextPhase(int phase)
+    {
+        foreach (PlayerMoneyAction playerMoneyDisplayer in moneyDisplayers)
+        {
+            playerMoneyDisplayer.actionText.text = "";
+        }
+
+        GamePhases currentPhase = (GamePhases)phase;
+        phaseText.text = $"Current Phase: {currentPhase}";
+    }
+    void ValidPlayerAction(int player, int action)
+    {
+        moneyDisplayers[player - 1].actionText.text = $"{(BettingActions)action}";
     }
 }
