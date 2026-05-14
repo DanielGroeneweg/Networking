@@ -258,6 +258,13 @@ public class UIManager : MonoBehaviour
     /// <param name="startingMoney"></param>
     void SetUpMoneyUI(int playerAmount, int startingMoney)
     {
+        for (int i = moneyDisplayers.Count - 1; i >= 0; i--)
+        {
+            PlayerMoneyAction moneyDisplayer = moneyDisplayers[i];
+            Destroy(moneyDisplayer.gameObject);
+        }
+        moneyDisplayers.Clear();
+
         for (int i = 1; i <= playerAmount; i++)
         {
             PlayerMoneyAction playerText = Instantiate(playerMoneyDisplayerPrefab, Vector3.zero, Quaternion.identity, moneyParent.transform);
