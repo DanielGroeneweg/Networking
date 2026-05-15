@@ -56,7 +56,7 @@ public class Client : MonoBehaviour
 	public delegate void InvalidNewGameEvent(string error);
 	public event InvalidNewGameEvent OnInvalidNewGame;
 
-	public delegate void PlayerInformationEvent(int playerAmount, int startingMoney);
+	public delegate void PlayerInformationEvent(List<int> playerIDs, int startingMoney);
 	public event PlayerInformationEvent OnPlayerInformation;
 
 	public delegate void RoundEndEvent(bool[] winners);
@@ -145,7 +145,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/InvalidAction", InvalidActionRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/InvalidNewRound", InvalidNewRoundRpc, OSCUtil.STRING);
 		dispatcher.AddListener("/InvalidNewGame", InvalidNewGameRpc, OSCUtil.STRING);
-		dispatcher.AddListener("/PlayerInformation", PlayerInformationRpc, OSCUtil.INT, OSCUtil.INT);
+		dispatcher.AddListener("/PlayerInformation", PlayerInformationRpc, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/RoundEnd", RoundEndRpc, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL, OSCUtil.BOOL);
 		dispatcher.AddListener("/GameEnd", GameEndRpc, OSCUtil.INT);
 		dispatcher.AddListener("/SendHostInformation", SendHostInformationRpc);
@@ -236,9 +236,16 @@ public class Client : MonoBehaviour
 	}
 	void PlayerInformationRpc(OSCMessageIn message, IPEndPoint remote)
 	{
-		int playerAmount = message.ReadInt();
+		List<int> ids = new();
+
+		for (int i = 0; i < 6; i++)
+		{
+            int id = message.ReadInt();
+			if (id > 0) ids.Add(id);
+        }
+
 		int startingMoney = message.ReadInt();
-		OnPlayerInformation?.Invoke(playerAmount, startingMoney);
+		OnPlayerInformation?.Invoke(ids, startingMoney);
 	}
 	void RoundEndRpc(OSCMessageIn message, IPEndPoint remote)
 	{

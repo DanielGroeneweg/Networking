@@ -65,7 +65,7 @@ public class UIManager : MonoBehaviour
 
     List<PlayerCardInfoShower> playerCardPresenters = new();
     List<BoardCardShower> boardPresenters = new();
-    List<PlayerMoneyAction> moneyDisplayers = new();
+    Dictionary<int, PlayerMoneyAction> moneyDisplayers = new();
     int myID;
     void Start()
     {
@@ -127,7 +127,7 @@ public class UIManager : MonoBehaviour
     /// Fires an event that enables all buttons for the host to start games and rounds.
     /// </summary>
     void EnableHostButtons() { enableHostButtons?.Invoke(); }
-    void DisableLobbyPanel(int players = 0, int money = 0) { hostPanel.SetActive(false); }
+    void DisableLobbyPanel(List<int> ids, int money = 0) { hostPanel.SetActive(false); }
     void GameOver(int winner)
     {
         gameOverText.text = $"player {winner} wins!";
@@ -214,8 +214,9 @@ public class UIManager : MonoBehaviour
         card1.PresentCard(firstCard);
         card2.PresentCard(secondCard);
 
-        foreach(PlayerMoneyAction presenter in moneyDisplayers)
+        foreach(int id in moneyDisplayers.Keys)
         {
+            PlayerMoneyAction presenter = moneyDisplayers[id];
             presenter.cards.gameObject.SetActive(true);
         }
     }
@@ -263,7 +264,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     /// <param name="playerAmount"></param>
     /// <param name="startingMoney"></param>
-    void SetUpMoneyUI(int playerAmount, int startingMoney)
+    void SetUpMoneyUI(List<int> ids, int startingMoney)
     {
         for (int i = moneyDisplayers.Count - 1; i >= 0; i--)
         {
@@ -272,11 +273,11 @@ public class UIManager : MonoBehaviour
         }
         moneyDisplayers.Clear();
 
-        for (int i = 1; i <= playerAmount; i++)
+        foreach (int id in ids)
         {
             PlayerMoneyAction playerText = Instantiate(playerMoneyDisplayerPrefab, Vector3.zero, Quaternion.identity, moneyParent.transform);
-            playerText.moneyText.text = $"Player {i}: ${startingMoney}";
-            moneyDisplayers.Add(playerText);
+            playerText.moneyText.text = $"Player {id}: ${startingMoney}";
+            moneyDisplayers.Add(id, playerText);
         }
 
         gameOverPanel.gameObject.SetActive(false);
@@ -310,8 +311,9 @@ public class UIManager : MonoBehaviour
     }
     void NextPhase(int phase)
     {
-        foreach (PlayerMoneyAction playerMoneyDisplayer in moneyDisplayers)
+        foreach (int id in moneyDisplayers.Keys)
         {
+            PlayerMoneyAction playerMoneyDisplayer = moneyDisplayers[id];
             playerMoneyDisplayer.actionText.text = "";
         }
 
@@ -320,14 +322,14 @@ public class UIManager : MonoBehaviour
     }
     void ValidPlayerAction(int player, int action)
     {
-        moneyDisplayers[player - 1].actionText.text = $"{(BettingActions)action}";
-        if ((BettingActions)action == BettingActions.Fold) moneyDisplayers[player - 1].cards.gameObject.SetActive(false);
+        moneyDisplayers[player].actionText.text = $"{(BettingActions)action}";
+        if ((BettingActions)action == BettingActions.Fold) moneyDisplayers[player].cards.gameObject.SetActive(false);
     }
     void DCPlayer(int player)
     {
-        moneyDisplayers[player - 1].actionText.text = "Disconnected";
-        moneyDisplayers[player - 1].actionText.color = Color.red;
-        moneyDisplayers[player - 1].moneyText.color = Color.red;
-        moneyDisplayers[player - 1] = null;
+        moneyDisplayers[player].actionText.text = "Disconnected";
+        moneyDisplayers[player].actionText.color = Color.red;
+        moneyDisplayers[player].moneyText.color = Color.red;
+        moneyDisplayers[player] = null;
     }
 }
