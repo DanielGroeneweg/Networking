@@ -213,6 +213,11 @@ public class UIManager : MonoBehaviour
 
         card1.PresentCard(firstCard);
         card2.PresentCard(secondCard);
+
+        foreach(PlayerMoneyAction presenter in moneyDisplayers)
+        {
+            presenter.cards.gameObject.SetActive(true);
+        }
     }
     /// <summary>
     /// Enables the post-round screen and displays all players that won.
@@ -316,6 +321,7 @@ public class UIManager : MonoBehaviour
     void ValidPlayerAction(int player, int action)
     {
         moneyDisplayers[player - 1].actionText.text = $"{(BettingActions)action}";
+        if ((BettingActions)action == BettingActions.Fold) moneyDisplayers[player - 1].cards.gameObject.SetActive(false);
     }
     void DCPlayer(int player)
     {
