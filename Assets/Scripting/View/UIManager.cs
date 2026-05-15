@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.Events;
+using System.Collections;
 public class UIManager : MonoBehaviour
 {
     [Header("Game")]
@@ -204,7 +205,7 @@ public class UIManager : MonoBehaviour
     }
     void PresentPlayerMoney(int player, int money)
     {
-        moneyDisplayers[player - 1].moneyText.text = $"Player {player}: ${money}";
+        moneyDisplayers[player].moneyText.text = $"Player {player}: ${money}";
     }
     void PresentCards(int card1Rank, int card1Suit, int card2Rank, int card2Suit)
     {
@@ -217,7 +218,20 @@ public class UIManager : MonoBehaviour
         foreach(int id in moneyDisplayers.Keys)
         {
             PlayerMoneyAction presenter = moneyDisplayers[id];
-            presenter.cards.gameObject.SetActive(true);
+
+            string txt = moneyDisplayers[id].moneyText.text.ToString();
+            int dollarIndex = txt.IndexOf('$');
+            if (dollarIndex != -1)
+            {
+                string amountText = txt.Substring(dollarIndex + 1);
+
+                if (float.TryParse(amountText, out float amount))
+                {
+                    if (amount > 0) presenter.cards.gameObject.SetActive(true);
+                    else presenter.cards.gameObject.SetActive(false);
+                }
+                else presenter.cards.gameObject.SetActive(true);
+            }
         }
     }
     /// <summary>
@@ -330,6 +344,12 @@ public class UIManager : MonoBehaviour
         moneyDisplayers[player].actionText.text = "Disconnected";
         moneyDisplayers[player].actionText.color = Color.red;
         moneyDisplayers[player].moneyText.color = Color.red;
-        moneyDisplayers[player] = null;
+        StartCoroutine(LateDestroyDisconnect(player));
+    }
+    IEnumerator LateDestroyDisconnect(int player)
+    {
+        yield return new WaitForSeconds(5);
+        Destroy(moneyDisplayers[player].gameObject);
+        moneyDisplayers.Remove(player);
     }
 }
