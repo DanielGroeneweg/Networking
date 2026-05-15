@@ -90,6 +90,7 @@ public class UIManager : MonoBehaviour
             client.OnPlayerID += ShowPlayerID;
             client.OnNextPhase += NextPhase;
             client.OnValidPlayerAction += ValidPlayerAction;
+            client.OnPlayerDC += DCPlayer;
         }
     }
     private void OnDestroy()
@@ -114,6 +115,7 @@ public class UIManager : MonoBehaviour
             client.OnPlayerID -= ShowPlayerID;
             client.OnNextPhase -= NextPhase;
             client.OnValidPlayerAction -= ValidPlayerAction;
+            client.OnPlayerDC -= DCPlayer;
         }
     }
     void NewRoundStart()
@@ -314,5 +316,12 @@ public class UIManager : MonoBehaviour
     void ValidPlayerAction(int player, int action)
     {
         moneyDisplayers[player - 1].actionText.text = $"{(BettingActions)action}";
+    }
+    void DCPlayer(int player)
+    {
+        moneyDisplayers[player - 1].actionText.text = "Disconnected";
+        moneyDisplayers[player - 1].actionText.color = Color.red;
+        moneyDisplayers[player - 1].moneyText.color = Color.red;
+        moneyDisplayers[player - 1] = null;
     }
 }
