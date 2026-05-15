@@ -85,6 +85,9 @@ public class Client : MonoBehaviour
 
 	public delegate void PlayerDCEvent(int player);
 	public event PlayerDCEvent OnPlayerDC;
+
+	public delegate void BankRuptEvent();
+	public event BankRuptEvent OnBankrupt;
     #endregion
     void Start()
 	{
@@ -155,6 +158,7 @@ public class Client : MonoBehaviour
 		dispatcher.AddListener("/KickPlayer", KickPlayerRpc);
 		dispatcher.AddListener("/ValidPlayerAction", ValidPlayerActionRpc, OSCUtil.INT, OSCUtil.INT);
 		dispatcher.AddListener("/PlayerDC", PlayerDCRpc, OSCUtil.INT);
+		dispatcher.AddListener("/Bankrupt", BankruptRpc);
 		
 		connectionMade = true;
 	}
@@ -295,6 +299,10 @@ public class Client : MonoBehaviour
 	{
 		int player = message.ReadInt();
 		OnPlayerDC?.Invoke(player);
+	}
+    public void BankruptRpc(OSCMessageIn message, IPEndPoint remote)
+	{
+		OnBankrupt?.Invoke();
 	}
     #endregion
 

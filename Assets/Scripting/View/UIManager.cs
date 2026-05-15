@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.Events;
 using System.Collections;
+using UnityEngine.Rendering.Universal;
 public class UIManager : MonoBehaviour
 {
     [Header("Game")]
@@ -63,6 +64,7 @@ public class UIManager : MonoBehaviour
 
     [Header("Events")]
     [SerializeField] UnityEvent onSpectator;
+    [SerializeField] UnityEvent onBankrupt;
 
     List<PlayerCardInfoShower> playerCardPresenters = new();
     List<BoardCardShower> boardPresenters = new();
@@ -92,6 +94,7 @@ public class UIManager : MonoBehaviour
             client.OnNextPhase += NextPhase;
             client.OnValidPlayerAction += ValidPlayerAction;
             client.OnPlayerDC += DCPlayer;
+            client.OnBankrupt += Bankrupt;
         }
     }
     private void OnDestroy()
@@ -117,11 +120,44 @@ public class UIManager : MonoBehaviour
             client.OnNextPhase -= NextPhase;
             client.OnValidPlayerAction -= ValidPlayerAction;
             client.OnPlayerDC -= DCPlayer;
+            client.OnBankrupt -= Bankrupt;
         }
     }
     void NewRoundStart()
     {
         onRoundStart?.Invoke();
+
+        foreach (int id in moneyDisplayers.Keys)
+        {
+            PlayerMoneyAction presenter = moneyDisplayers[id];
+
+            string txt = moneyDisplayers[id].moneyText.text.ToString();
+            int dollarIndex = txt.IndexOf('$');
+            if (dollarIndex != -1)
+            {
+                string amountText = txt.Substring(dollarIndex + 1);
+
+                Debug.Log(id);
+                if (float.TryParse(amountText, out float amount))
+                {
+                    if (amount > 0)
+                    {
+                        presenter.cards.gameObject.SetActive(true);
+                        Debug.Log("succeeded parse, enabling");
+                    }
+                    else
+                    {
+                        Debug.Log("succeeded parse, disabling");
+                        presenter.cards.gameObject.SetActive(false);
+                    }
+                }
+                else
+                {
+                    Debug.Log("failed parse");
+                    presenter.cards.gameObject.SetActive(true);
+                }
+            }
+        }
     }
     void EnableLobbyPanel(int id) { hostPanel.SetActive(true); }
     /// <summary>
@@ -133,6 +169,12 @@ public class UIManager : MonoBehaviour
     {
         gameOverText.text = $"player {winner} wins!";
         gameOverPanel.gameObject.SetActive(true);
+        
+        foreach (int id in moneyDisplayers.Keys)
+        {
+            if (moneyDisplayers[id].gameObject != null) Destroy(moneyDisplayers[id].gameObject);
+        }
+        moneyDisplayers.Clear();
     }
     void PresentPotMoney(int pot)
     {
@@ -214,25 +256,6 @@ public class UIManager : MonoBehaviour
 
         card1.PresentCard(firstCard);
         card2.PresentCard(secondCard);
-
-        foreach(int id in moneyDisplayers.Keys)
-        {
-            PlayerMoneyAction presenter = moneyDisplayers[id];
-
-            string txt = moneyDisplayers[id].moneyText.text.ToString();
-            int dollarIndex = txt.IndexOf('$');
-            if (dollarIndex != -1)
-            {
-                string amountText = txt.Substring(dollarIndex + 1);
-
-                if (float.TryParse(amountText, out float amount))
-                {
-                    if (amount > 0) presenter.cards.gameObject.SetActive(true);
-                    else presenter.cards.gameObject.SetActive(false);
-                }
-                else presenter.cards.gameObject.SetActive(true);
-            }
-        }
     }
     /// <summary>
     /// Enables the post-round screen and displays all players that won.
@@ -351,5 +374,9 @@ public class UIManager : MonoBehaviour
         yield return new WaitForSeconds(5);
         Destroy(moneyDisplayers[player].gameObject);
         moneyDisplayers.Remove(player);
+    }
+    void Bankrupt()
+    {
+        onBankrupt?.Invoke();
     }
 }
