@@ -88,53 +88,139 @@ public class Client : MonoBehaviour
 
 	public delegate void BankRuptEvent();
 	public event BankRuptEvent OnBankrupt;
+
+	public delegate void ConnectionFailedEvent(string message);
+	public event ConnectionFailedEvent OnConnectionFailed;
+
+	public delegate void DisconnectedEvent(string reason);
+	public event DisconnectedEvent OnDisconnected;
     #endregion
     void Start()
 	{
-        ServerIP = Dns.GetHostAddresses(serverIP)[0];
+        TryConnect();
+    }
+    void TryConnect()
+    {
+        try
+        {
+            ServerIP = Dns.GetHostAddresses(serverIP)[0];
 
-        TcpClient client = new TcpClient();
-        client.Connect(new IPEndPoint(ServerIP, serverPort));
-        connection = new TcpNetworkConnection(client);
-        // TODO: error handling
+            TcpClient client = new TcpClient();
 
-        Debug.Log("Starting client, connecting to " + ServerIP);
+            client.Connect(new IPEndPoint(ServerIP, serverPort));
 
-        // Initialize the dispatcher and callbacks for incoming OSC messages:
-        dispatcher = new OSCDispatcher();
-        dispatcher.ShowIncomingMessages = true;
-        Initialize();
+            connection = new TcpNetworkConnection(client);
+
+            Debug.Log("Connected to server: " + ServerIP);
+
+            dispatcher = new OSCDispatcher();
+            dispatcher.ShowIncomingMessages = true;
+
+            Initialize();
+        }
+        catch (SocketException ex)
+        {
+            Debug.LogError("Socket error: " + ex.Message);
+
+            OnConnectionFailed?.Invoke(ex.Message);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Connection failed: " + ex.Message);
+
+            OnConnectionFailed?.Invoke(ex.Message);
+        }
     }
 
-	/// <summary>
-	/// Called from NetworkConnection callback (connection.Update), when a packet arrives:
-	/// </summary>
-	void HandlePacket(byte[] packet, IPEndPoint remote) {
-		OSCMessageIn mess = new OSCMessageIn(packet);
-		Debug.Log("Message arrives on client: " + mess);
-		dispatcher.HandlePacket(packet, remote);
-	}
+    /// <summary>
+    /// Called from NetworkConnection callback (connection.Update), when a packet arrives:
+    /// </summary>
+    void HandlePacket(byte[] packet, IPEndPoint remote)
+    {
+        try
+        {
+            OSCMessageIn mess = new OSCMessageIn(packet);
 
-	/// <summary>
-	/// Disconnects the client from the server
-	/// </summary>
-	public void Disconnect()
+            Debug.Log("Message arrives on client: " + mess);
+
+            dispatcher.HandlePacket(packet, remote);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Invalid packet: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Disconnects the client from the server
+    /// </summary>
+    public void Disconnect()
 	{
-		connection.Close();
-	}
+        HandleDisconnect("Client disconnected.");
+    }
 	void Update()
 	{
-		if (!connectionMade) return;
-		// Check for incoming packets, and deal with them:
-		while (connection.Available() > 0) {
-			HandlePacket(connection.GetPacket(), connection.Remote);
-		}
-		
-		// TODO: disconnect handling
-		//onKickPlayer.Invoke();
-	}
+		if (!connectionMade || connection == null) return;
+        // Check for incoming packets, and deal with them:
+        try
+        {
+            while (connection.Available() > 0)
+            {
+                HandlePacket(connection.GetPacket(), connection.Remote);
+            }
 
-	void Initialize() {
+            CheckConnectionAlive();
+        }
+        catch (SocketException ex)
+        {
+            Debug.LogError("Lost connection: " + ex.Message);
+
+            HandleDisconnect("Lost connection to server.");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Network error: " + ex.Message);
+
+            HandleDisconnect("Network error.");
+        }
+    }
+	void CheckConnectionAlive()
+	{
+        if (connection == null)
+            return;
+
+        Socket socket = connection.socket.Client;
+
+        bool disconnected =
+            socket.Poll(1, SelectMode.SelectRead) &&
+            socket.Available == 0;
+
+        if (disconnected)
+        {
+            HandleDisconnect("Server disconnected.");
+        }
+    }
+    void HandleDisconnect(string reason)
+    {
+        if (!connectionMade)
+            return;
+
+        connectionMade = false;
+
+        Debug.Log("Disconnected: " + reason);
+
+        try
+        {
+            connection?.Close();
+        }
+        catch { }
+
+        connection = null;
+
+        OnDisconnected?.Invoke(reason);
+    }
+
+    void Initialize() {
 		// The (optional) list of parameter types (OSCUtil.INT) lets the dispatcher filter
 		//  messages that do not satisfy the expected signature (=parameter list):
 		dispatcher.AddListener("/UpdatePot", UpdatePotRpc, OSCUtil.INT);
@@ -162,7 +248,10 @@ public class Client : MonoBehaviour
 		
 		connectionMade = true;
 	}
-
+    void OnApplicationQuit()
+    {
+        Disconnect();
+    }
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
     #region Incoming
     void UpdatePotRpc(OSCMessageIn message, IPEndPoint remote)

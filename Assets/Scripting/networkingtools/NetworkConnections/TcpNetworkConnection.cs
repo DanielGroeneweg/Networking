@@ -39,7 +39,7 @@ namespace NetworkConnections
 
         public ConnectionStatus Status { get; private set; } = ConnectionStatus.Connecting;
 
-        readonly TcpClient socket;
+        public readonly TcpClient socket;
 
         // Internal packet reading state:
         Queue<byte[]> incoming = new Queue<byte[]>();
@@ -141,7 +141,7 @@ namespace NetworkConnections
 
         void Update()
         {
-            if (!socket.Connected)
+            if (!IsConnected)
             {
                 Status = ConnectionStatus.Disconnected;
                 ConnectionLog.WriteLine("NetworkConnection.Update: socket closed by remote");
@@ -205,7 +205,7 @@ namespace NetworkConnections
             try
             {
                 NetworkStream stream = socket.GetStream();
-                stream.WriteTimeout = 1;
+                stream.WriteTimeout = 1000;
                 if (stream.CanWrite)
                 {
                     stream.Write(BitConverter.GetBytes(packet.Length), 0, 4);
@@ -255,8 +255,20 @@ namespace NetworkConnections
         /// </summary>
         public void Close()
         {
-            Status = ConnectionStatus.Disconnected;
+            if (Status == ConnectionStatus.Disconnected)
+                return;
+
+            Status = ConnectionStatus.Disconnecting;
+
+            try
+            {
+                socket.Client.Shutdown(SocketShutdown.Both);
+            }
+            catch { }
+
             socket.Close();
+
+            Status = ConnectionStatus.Disconnected;
         }
 
         public bool IsConnected
