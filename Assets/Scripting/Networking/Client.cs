@@ -218,6 +218,8 @@ public class Client : MonoBehaviour
         connection = null;
 
         OnDisconnected?.Invoke(reason);
+
+		onKickPlayer?.Invoke();
     }
 
     void Initialize() {
