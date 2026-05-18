@@ -254,6 +254,10 @@ public class Client : MonoBehaviour
     {
         Disconnect();
     }
+	void HandleHeartBeat()
+	{
+		timeSinceHeartBeat = 0;
+	}
     // ----- Incoming RPCs (events are triggered, and View classes subscribe):
     #region Incoming
     void UpdatePotRpc(OSCMessageIn message, IPEndPoint remote)
