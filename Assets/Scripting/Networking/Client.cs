@@ -89,9 +89,6 @@ public class Client : MonoBehaviour
 	public delegate void BankRuptEvent();
 	public event BankRuptEvent OnBankrupt;
 
-	public delegate void ConnectionFailedEvent(string message);
-	public event ConnectionFailedEvent OnConnectionFailed;
-
 	public delegate void DisconnectedEvent(string reason);
 	public event DisconnectedEvent OnDisconnected;
     #endregion
@@ -103,7 +100,7 @@ public class Client : MonoBehaviour
     {
         try
         {
-            ServerIP = Dns.GetHostAddresses(serverIP)[0];
+            if (!string.IsNullOrEmpty(serverIP)) ServerIP = Dns.GetHostAddresses(serverIP)[0];
 
             TcpClient client = new TcpClient();
 
@@ -120,15 +117,15 @@ public class Client : MonoBehaviour
         }
         catch (SocketException ex)
         {
-            Debug.LogError("Socket error: " + ex.Message);
+            Debug.Log("Socket error: " + ex.Message);
 
-            OnConnectionFailed?.Invoke(ex.Message);
+            onKickPlayer?.Invoke();
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("Connection failed: " + ex.Message);
+            Debug.Log("Connection failed: " + ex.Message);
 
-            OnConnectionFailed?.Invoke(ex.Message);
+            onKickPlayer?.Invoke();
         }
     }
 

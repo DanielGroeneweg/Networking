@@ -70,7 +70,7 @@ public class UIManager : MonoBehaviour
     List<BoardCardShower> boardPresenters = new();
     Dictionary<int, PlayerMoneyAction> moneyDisplayers = new();
     int myID;
-    void Start()
+    void Awake()
     {
         client = FindFirstObjectByType<Client>();
         if (client != null)

@@ -15,7 +15,7 @@ public class KickManager : MonoBehaviour
     UnityEvent OnKick;
 
     Client client;
-    void Start()
+    void Awake()
     {
         client = FindFirstObjectByType<Client>();
         if (client != null)
